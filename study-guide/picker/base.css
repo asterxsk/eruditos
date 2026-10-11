@@ -1,0 +1,262 @@
+/* base.css — the static half of the study-guide stylesheet.
+ *
+ * Every colour and the type rhythm come from the custom properties theme.py
+ * emits ahead of this file; nothing here is hardcoded to a theme. It is
+ * concatenated into theme.css, so the guide's page links one stylesheet.
+ *
+ * WeasyPrint 70.0 constraints (see .scratch/picker/research/weasyprint-css-support.md):
+ *   - no color-mix, no mask-image, no filter, no backdrop-filter
+ *   - no comma inside a var() fallback (silently truncated)
+ *   - flexbox and grid work; calc() and var() work
+ * Fallbacks are therefore always single values.
+ */
+
+/* ------------------------------------------------------------------ page */
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: calc(10.2pt * var(--type-scale, 1));
+  line-height: 1.55;
+  color: var(--text, #c8cfd8);
+  -weasy-hyphens: none;
+}
+h1, h2, h3, h4 { font-family: var(--font-heading); font-weight: 600; margin: 0; }
+/* A full line-height gap between paragraphs reads loose for continuous prose
+   at this size. Half a line, and the same gap after the last one. */
+p { margin: 0 0 4.6pt 0; }
+
+.unitbreak { page-break-before: always; }
+/* The contents gets its own page: cover = 1, contents = 2. Without the leading
+   break the cover and the contents share page 1 and the last couple of rows
+   spill onto a near-empty page of their own. */
+.contents  { page-break-before: always; page-break-after: always; }
+.unit      { margin-top: calc(15mm * var(--rhythm, 1.15)); }
+
+.unit-head {
+  border-top: 1px solid var(--rule-strong, rgba(255,255,255,0.11));
+  padding: calc(9mm * var(--rhythm, 1.15)) 0 0 0;
+  margin-bottom: calc(7mm * var(--rhythm, 1.15));
+  page-break-inside: avoid; page-break-after: avoid;
+}
+.unit-tag {
+  font-family: var(--font-code); font-size: 7.4pt;
+  color: var(--faint, #5d6672); letter-spacing: 2.2px; text-transform: uppercase;
+}
+.unit-head h1 { font-size: 23pt; color: var(--strong, #fff); margin-top: 3mm; line-height: 1.14; }
+.unit-head .blurb { color: var(--dim, #8f98a6); font-size: 9.8pt; margin-top: 3.4mm; }
+
+/* The heading already carries a rule; a 9mm top margin on top of the preceding
+   block's bottom margin opens a double gap after every table and work block.
+   The bottom margin keeps the first line off the hairline. */
+h2.sec {
+  font-size: 12.6pt; color: var(--strong, #fff);
+  margin: calc(8mm * var(--rhythm, 1.15)) 0 calc(4.5mm * var(--rhythm, 1.15)) 0;
+  padding-bottom: 2.2mm; border-bottom: 1px solid var(--rule, rgba(255,255,255,0.055));
+  page-break-after: avoid;
+}
+h3.sub {
+  font-size: 10.2pt; color: var(--dim, #8f98a6);
+  margin: calc(6mm * var(--rhythm, 1.15)) 0 2.4mm 0; page-break-after: avoid;
+}
+
+/* --------------------------------------------------------- the two cards */
+/* Algorithm card — the numbered-step card. A real card, so it is fenced. */
+.card {
+  border-radius: 4px; margin: 0 0 calc(4.4mm * var(--rhythm, 1.15)) 0; overflow: hidden;
+  background: var(--block-fill, rgba(255,255,255,0.016));
+  border: 1px solid var(--rule-strong, rgba(255,255,255,0.11));
+  border-left: 2px solid var(--accent-soft, rgba(121,192,255,0.55));
+}
+.card-h {
+  padding: 2.8mm 4.4mm; font-family: var(--font-heading); font-size: 9.4pt;
+  color: var(--strong, #dfe5ec);
+  background: var(--wash, rgba(255,255,255,0.022));
+  border-bottom: 1px solid var(--rule, rgba(255,255,255,0.06));
+  page-break-after: avoid;
+}
+.card-h .pill {
+  font-family: var(--font-code); font-size: 6.8pt; color: var(--accent, #79c0ff);
+  letter-spacing: .6px; border: 1px solid var(--accent-soft, rgba(121,192,255,0.32));
+  border-radius: 2px; padding: .4mm 1.8mm; margin-right: 3mm;
+}
+.card-b {
+  padding: 3.6mm 4.6mm 4mm; font-family: var(--font-code); font-size: 8.1pt;
+  line-height: 1.68; white-space: pre-wrap; color: var(--text, #b6bfca);
+}
+.card-b .step, .card-b .cont { display: block; page-break-inside: avoid; }
+.card-b .num { color: var(--accent, #79c0ff); }
+
+/* Code card — a file listing. The window chrome is meaningful here. */
+.code {
+  border-radius: 4px; margin: 0 0 calc(4.6mm * var(--rhythm, 1.15)) 0; overflow: hidden;
+  background: var(--code-fill, #0a0d12);
+  border: 1px solid var(--rule-strong, rgba(255,255,255,0.11));
+}
+.code-h {
+  padding: 2.4mm 4mm; background: var(--wash, rgba(255,255,255,0.022));
+  border-bottom: 1px solid var(--rule, rgba(255,255,255,0.06)); page-break-after: avoid;
+}
+.code-h .dots i {
+  display: inline-block; width: 1.9mm; height: 1.9mm; border-radius: 50%;
+  margin-right: 1.4mm; background: var(--rule-strong, rgba(255,255,255,0.16));
+}
+.code-h .name { font-family: var(--font-code); font-size: 8.2pt; color: var(--code-text, #cfd6de); margin-left: 2.6mm; }
+.code-h .lang {
+  float: right; font-family: var(--font-code); font-size: 6.8pt;
+  color: var(--faint, #6b7482); border: 1px solid var(--rule-strong, rgba(255,255,255,0.12));
+  border-radius: 2px; padding: .3mm 1.8mm; letter-spacing: 1px;
+}
+.code pre {
+  margin: 0; padding: 3.8mm 4.4mm; font-family: var(--font-code);
+  font-size: 7.5pt; line-height: 1.52; color: var(--code-text, #b8c2ce); white-space: pre;
+}
+.code pre ::selection, .code pre::selection { background: var(--code-sel, rgba(121,192,255,0.22)); }
+
+/* Complexity line — the accent rule at the foot of a card. */
+.cx {
+  font-family: var(--font-code); font-size: 7.4pt; color: var(--accent, #79c0ff);
+  border-top: 1px solid var(--rule, rgba(255,255,255,0.07));
+  margin-top: 3.4mm; padding-top: 2.4mm;
+}
+.code .cx { margin: 0; padding: 2.8mm 4.4mm 3mm; }
+
+/* ------------------------------------------------- open blocks (no box) */
+/* Callouts: left rule + label, no fill, no border. */
+.note, .tip {
+  margin: 0 0 calc(4.6mm * var(--rhythm, 1.15)) 0;
+  padding: 0.4mm 0 0.4mm 5mm; background: none; border: none;
+  border-left: 2px solid; page-break-inside: avoid;
+}
+.note { border-left-color: var(--warn-line, rgba(224,168,86,0.60)); }
+.tip  { border-left-color: var(--ok-line,  rgba(120,190,150,0.60)); }
+.note .nt, .tip .nt {
+  font-family: var(--font-code); font-size: 7.6pt; letter-spacing: 1.6px;
+  text-transform: uppercase; margin-bottom: 2mm;
+}
+.note .nt { color: var(--warn, #e0a856); }
+.tip  .nt { color: var(--ok, #78be96); }
+.note p, .tip p { font-size: 9.6pt; color: var(--text, #c3cbd5); margin: 0 0 3pt; }
+
+/* Worked examples: dim left rule + label, no box. */
+.work {
+  margin: 0 0 calc(4.6mm * var(--rhythm, 1.15)) 0; padding: 0 0 0 5mm;
+  background: none; border: none; border-left: 2px solid var(--dim-soft, rgba(150,160,175,0.40));
+}
+.work-h {
+  padding: 0 0 2mm 0; font-family: var(--font-code); font-size: 7.6pt;
+  color: var(--dim, #8f98a6); letter-spacing: 1.6px; text-transform: uppercase;
+  background: none; border: none; page-break-after: avoid;
+}
+.work-b {
+  padding: 0; font-family: var(--font-code); font-size: 8pt;
+  line-height: 1.62; color: var(--text, #aeb7c2);
+}
+.work-b span.cont { display: block; page-break-inside: avoid; }
+.work-b .hi { color: var(--warn, #e8b96a); }
+.work-b .g  { color: var(--ok, #7fc79c); }
+.work-b .r  { color: var(--bad, #e08585); }
+
+/* ------------------------------------------------------------- equations */
+.eq { text-align: center; margin: 7mm 0; page-break-inside: avoid; }
+.eq svg, .eq img { vertical-align: middle; }
+.eq .eqn {
+  float: right; font-family: var(--font-code); font-size: 7.4pt;
+  color: var(--faint, #5d6672); line-height: 2.4;
+}
+span.imath { vertical-align: -0.35ex; }
+
+/* --------------------------------------------------------------- figures */
+/* A diagram of the kind the source itself carries: a curve, a schedule or a
+   labelled shape. Centred, never split, with the caption as an open line under
+   it. The SVG is inlined, so it inherits the page colour and needs no box. */
+.fig {
+  margin: calc(2mm * var(--rhythm, 1.15)) 0 calc(5mm * var(--rhythm, 1.15)) 0;
+  text-align: center; page-break-inside: avoid;
+}
+.fig svg.figsvg { width: 100%; height: auto; max-height: 94mm; }
+.fig .figcap {
+  font-family: var(--font-code); font-size: 7.4pt; color: var(--faint, #5d6672);
+  margin-top: 2.4mm; text-align: left; line-height: 1.5;
+}
+
+/* ---------------------------------------------------------------- tables */
+table.data { width: 100%; border-collapse: collapse; margin: 0 0 5mm 0; font-size: 9.2pt; }
+table.data thead th {
+  text-align: left; padding: 2.8mm 3.4mm; color: var(--dim, #8f98a6);
+  background: var(--wash, rgba(255,255,255,0.035));
+  font-family: var(--font-code); font-weight: 400;
+  font-size: 7.6pt; letter-spacing: 1.2px; text-transform: uppercase;
+  border-bottom: 1px solid var(--rule-strong, rgba(255,255,255,0.11));
+}
+table.data td { padding: 2.6mm 3.4mm; border-bottom: 1px solid var(--rule, rgba(255,255,255,0.055)); color: var(--text, #c0c8d2); }
+table.data td.m { font-family: var(--font-code); font-size: 8.2pt; color: var(--dim, #a8b2be); }
+table.data tr { page-break-inside: avoid; }
+.cap {
+  font-family: var(--font-code); font-size: 7.4pt; color: var(--faint, #5d6672);
+  margin: -3.4mm 0 5mm 0; line-height: 1.5;
+}
+
+/* ------------------------------------------------------------------- q&a */
+.qa {
+  padding: 3.4mm 0; margin-bottom: 1mm; border-bottom: 1px solid var(--rule, rgba(255,255,255,0.055));
+  page-break-inside: avoid;
+}
+.qa .q { font-family: var(--font-heading); font-weight: 500; font-size: 9.6pt; color: var(--strong, #dfe5ec); margin-bottom: 1.6mm; }
+.qa .a { font-size: 9.6pt; color: var(--text, #b6bfca); }
+.qa .a code { font-family: var(--font-code); font-size: 8.5pt; color: var(--accent, #9dc1e0); }
+/* Three equivalent prompts share one number and one model answer. */
+.qa .qa-num {
+  font-family: var(--font-heading); font-weight: 600; font-size: 11pt;
+  color: var(--strong, #dfe5ec); margin-bottom: 3mm; page-break-after: avoid;
+}
+.qa .qa-star {
+  font-family: var(--font-code); color: var(--accent, #79c0ff); margin-left: 2mm;
+}
+.qa .q { page-break-after: avoid; }
+.qa .a { margin-top: 3mm; }
+.qa .a .keyword { color: var(--accent, #79c0ff); font-weight: 700; }
+.qa.qa-long { page-break-inside: auto; }
+
+
+/* ------------------------------------------------------------- contents */
+.contents-item {
+  padding: calc(4mm * var(--rhythm, 1.15)) 0;
+  border-bottom: 1px solid var(--rule, rgba(255,255,255,0.06));
+  page-break-inside: avoid;
+}
+a.toc { text-decoration: none; }
+a.toc::after {
+  content: target-counter(attr(href), page);   /* page, never pages — 'pages' hard-crashes WeasyPrint */
+  float: right; font-family: var(--font-code); color: var(--accent, #79c0ff); font-size: 8.6pt;
+}
+a.toc .n { display: inline-block; width: 11mm; font-family: var(--font-code); color: var(--faint, #6b7482); font-size: 9pt; }
+a.toc .t { font-family: var(--font-heading); font-weight: 500; font-size: 10.6pt; color: var(--strong, #e8edf3); }
+/* The tag sits on its own line under the title. Left inline it butts straight
+   against the last word of a long title, and its margin-top does nothing,
+   because a margin-top on an inline box is ignored. */
+a.toc .d { display: block; margin-left: 11mm; color: var(--faint, #5d6672);
+           font-size: 7.6pt; font-family: var(--font-code); letter-spacing: 1px; }
+
+.end { margin-top: 12mm; padding: 10mm 0 0 0; border-top: 1px solid var(--rule-strong, rgba(255,255,255,0.10)); }
+
+/* ------------------------------------------------------------ break rules */
+.qa, .contents-item              { page-break-inside: avoid; }
+.card-b .step, .work-b span.cont { page-break-inside: avoid; }
+.eq                              { page-break-inside: avoid; }
+table.data tr                    { page-break-inside: avoid; }
+.code-h, .card-h, .work-h,
+h2.sec, h3.sub                   { page-break-after: avoid; }
+p, li                            { orphans: 2; widows: 2; }
+
+/* ------------------------------------------- syntax highlighting (Pygments) */
+/* Muted tones, tuned to sit on the code card's fill, not the page. */
+.k, .kn, .kd, .cp, .cpf { color: #c08cd0; }
+.kt, .nc                { color: #56b6a4; }
+.nf, .fm, .nb, .bp      { color: #cfc07a; }
+.n, .nx                 { color: #9dc1e0; }
+.s, .s1, .s2, .sb, .sc, .se, .sd { color: #c79472; }
+.m, .mi, .mf, .mh, .mo  { color: #a3bf8f; }
+.c, .c1, .cm            { color: #5f7a55; }
+.o, .ow                 { color: var(--code-text); }
+.p                      { color: #8b95a1; }
+.err                    { color: #f07171; }

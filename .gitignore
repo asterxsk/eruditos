@@ -1,0 +1,5 @@
+# Dev-only scratch and tooling
+.scratch/
+.claude/
+__pycache__/
+*.pyc

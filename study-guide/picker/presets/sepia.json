@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "name": "sepia",
+  "themes": ["light"],
+  "light": {
+    "base": "#f6f0e4",
+    "gradient": { "from": "#efe6d2", "via": "#f6f0e4", "to": "#f1e8d8", "angle": 0 },
+    "strong": "#2b2418",
+    "text": "#453c2c",
+    "dim": "#776c58",
+    "faint": "#746d5e",
+    "rule": "rgba(43,36,24,0.16)",
+    "accent": "#6b6f2a",
+    "blockFill": "rgba(43,36,24,0.05)",
+    "ruleStrong": "rgba(43,36,24,0.22)",
+    "wash": "rgba(43,36,24,0.06)",
+    "dimSoft": "rgba(90,80,62,0.34)",
+    "warn": "#8a5a12",
+    "warnLine": "rgba(138,90,18,0.55)",
+    "ok": "#3a6746",
+    "okLine": "rgba(58,103,70,0.52)",
+    "bad": "#9c3b30",
+    "code": {
+      "fill": "#241f16",
+      "text": "#ddd5c4",
+      "keyword": "#bcc98a",
+      "comment": "#8a8171"
+    }
+  },
+  "gradient": {
+    "shape": "mesh",
+    "texture": "uniform",
+    "patch": { "x": 0.22, "y": 0.06, "radius": 0.34, "strength": 0.9 }
+  },
+  "layout": "normal",
+  "fonts": {
+    "heading": { "source": "bundled", "family": "Poppins", "size": 23 },
+    "body": { "source": "bundled", "family": "Guide Sans", "size": 10.2 },
+    "code": { "source": "bundled", "family": "DejaVu Sans Mono", "size": 7.5 }
+  }
+}

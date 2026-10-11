@@ -1,0 +1,347 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://study-guide.local/picker/design.schema.json",
+  "title": "study-guide design config",
+  "description": "One design. Resolved as: named preset library, overridden by the repo default, overridden by a per-guide config. Any object a partial config supplies is deep-merged key-by-key over the layer beneath; a key it omits keeps the lower layer's value.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "themes"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Preset name. Present in the library, absent in a per-guide config."
+    },
+    "basedOn": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Name of the library preset this config starts from. Absent in library presets themselves."
+    },
+    "themes": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "dark",
+          "light"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "Which themes the build emits. [dark] -> one dark PDF. [light] -> one light PDF. Both -> both PDFs. Nothing else is ever produced."
+    },
+    "dark": {
+      "$ref": "#/$defs/palette"
+    },
+    "light": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/palette"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "preset"
+          ],
+          "properties": {
+            "preset": {
+              "enum": [
+                "cobalt",
+                "paper",
+                "sepia",
+                "ice",
+                "mono"
+              ]
+            }
+          },
+          "description": "Shorthand: name a shipped light preset instead of listing tokens."
+        }
+      ]
+    },
+    "gradient": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "shape": {
+          "enum": [
+            "linear",
+            "mesh",
+            "vignette",
+            "flat"
+          ],
+          "default": "mesh",
+          "description": "The page background's underlying form."
+        },
+        "texture": {
+          "enum": [
+            "none",
+            "uniform",
+            "focused",
+            "structural"
+          ],
+          "default": "uniform",
+          "description": "Grain on top of the shape. 'focused' means the density patch is active."
+        },
+        "patch": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The density patch: grain is boosted inside a radius around a point. Replaces the old centre/corner/top/off-canvas position menu.",
+          "required": [
+            "x",
+            "y",
+            "radius",
+            "strength"
+          ],
+          "properties": {
+            "x": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Point x as a fraction of page width. 0 = left edge."
+            },
+            "y": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Point y as a fraction of page height. 0 = top edge."
+            },
+            "radius": {
+              "type": "number",
+              "minimum": 0.05,
+              "maximum": 1.2,
+              "description": "Reach of the boost as a fraction of the shorter page side. Tight masks are what make the patch visible; wide ones read as nothing."
+            },
+            "strength": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 3,
+              "description": "How much denser the grain is at the centre, as a multiple of the surrounding field."
+            }
+          }
+        }
+      }
+    },
+    "layout": {
+      "enum": [
+        "comfortable",
+        "normal",
+        "compact"
+      ],
+      "default": "normal",
+      "description": "Scales rhythm and type together. Body text is floored around 9pt even in compact."
+    },
+    "fonts": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Role mapping. Weight is fixed per role (see the bundled manifest); only family and size are chosen.",
+      "properties": {
+        "heading": {
+          "$ref": "#/$defs/fontRole"
+        },
+        "body": {
+          "$ref": "#/$defs/fontRole"
+        },
+        "code": {
+          "$ref": "#/$defs/fontRole"
+        }
+      }
+    },
+    "randomiser": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Which axes the curated randomiser is allowed to vary. A locked axis keeps its current value.",
+      "properties": {
+        "locks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/axis"
+          },
+          "uniqueItems": true,
+          "default": []
+        }
+      }
+    }
+  },
+  "$defs": {
+    "axis": {
+      "enum": [
+        "shape",
+        "texture",
+        "patch.x",
+        "patch.y",
+        "patch.radius",
+        "patch.strength",
+        "palette",
+        "layout"
+      ]
+    },
+    "fontRole": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "family"
+      ],
+      "properties": {
+        "source": {
+          "enum": [
+            "bundled",
+            "local"
+          ],
+          "description": "'bundled' ships with the skill and is reproducible anywhere. 'local' names a family installed on this machine; the PDF only matches on machines that have it."
+        },
+        "family": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Bundled family name (e.g. 'Poppins') or an installed family name (e.g. 'Cascadia Mono')."
+        },
+        "weight": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 900,
+          "multipleOf": 100,
+          "description": "Only meaningful for a local family, whose available weights are enumerated at pick time. Bundled roles ignore this and use their fixed weight."
+        },
+        "size": {
+          "type": "number",
+          "minimum": 7,
+          "maximum": 72,
+          "description": "Base size in points for the role; the layout preset scales it."
+        }
+      }
+    },
+    "colour": {
+      "type": "string",
+      "pattern": "^(#[0-9a-fA-F]{3,8}|rgba?\\([^)]*\\)|hsla?\\([^)]*\\)|transparent|currentColor)$",
+      "description": "Any CSS colour except color-mix() and color(from ...), which WeasyPrint rejects. The editor precomputes any mix at generation time."
+    },
+    "palette": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base",
+        "text"
+      ],
+      "properties": {
+        "base": {
+          "$ref": "#/$defs/colour",
+          "description": "Page background, flat beneath the gradient."
+        },
+        "gradient": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "from": {
+              "$ref": "#/$defs/colour"
+            },
+            "via": {
+              "$ref": "#/$defs/colour"
+            },
+            "to": {
+              "$ref": "#/$defs/colour"
+            },
+            "angle": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 360
+            }
+          },
+          "description": "Stops for the linear shape; the mesh and vignette shapes derive their layers from the same stops."
+        },
+        "strong": {
+          "$ref": "#/$defs/colour",
+          "description": "Headings and emphasis."
+        },
+        "text": {
+          "$ref": "#/$defs/colour",
+          "description": "Body text."
+        },
+        "dim": {
+          "$ref": "#/$defs/colour",
+          "description": "Captions, table headers."
+        },
+        "faint": {
+          "$ref": "#/$defs/colour",
+          "description": "Footnotes, timestamps. Must clear 4.5:1 on the base."
+        },
+        "rule": {
+          "$ref": "#/$defs/colour",
+          "description": "Hairlines and card borders."
+        },
+        "accent": {
+          "$ref": "#/$defs/colour",
+          "description": "The one accent: kickers, callout rules, links."
+        },
+        "blockFill": {
+          "$ref": "#/$defs/colour",
+          "description": "Algorithm and callout card fills."
+        },
+        "ruleStrong": {
+          "$ref": "#/$defs/colour",
+          "description": "Stronger hairlines: card borders, header rules. Derived from a white/black wash when omitted."
+        },
+        "wash": {
+          "$ref": "#/$defs/colour",
+          "description": "Table-header and card-header wash."
+        },
+        "accentSoft": {
+          "$ref": "#/$defs/colour",
+          "description": "The accent at ~32% for the algorithm card's left edge and the pill outline. Derived from accent when omitted."
+        },
+        "dimSoft": {
+          "$ref": "#/$defs/colour",
+          "description": "The worked-example left rule."
+        },
+        "warn": {
+          "$ref": "#/$defs/colour",
+          "description": "Note-callout label. Amber. Callouts only, never general text."
+        },
+        "warnLine": {
+          "$ref": "#/$defs/colour",
+          "description": "Note-callout left rule."
+        },
+        "ok": {
+          "$ref": "#/$defs/colour",
+          "description": "Tip-callout label. Green. Callouts only."
+        },
+        "okLine": {
+          "$ref": "#/$defs/colour",
+          "description": "Tip-callout left rule."
+        },
+        "bad": {
+          "$ref": "#/$defs/colour",
+          "description": "Error span in worked examples."
+        },
+        "code": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The code card is the one card that inverts: dark-on-light grounds carry a dark code card.",
+          "properties": {
+            "fill": {
+              "$ref": "#/$defs/colour"
+            },
+            "text": {
+              "$ref": "#/$defs/colour"
+            },
+            "keyword": {
+              "$ref": "#/$defs/colour"
+            },
+            "comment": {
+              "$ref": "#/$defs/colour"
+            },
+            "selection": {
+              "$ref": "#/$defs/colour",
+              "description": "Text-selection ground inside code blocks. Derived from accent when omitted."
+            }
+          }
+        }
+      }
+    }
+  }
+}

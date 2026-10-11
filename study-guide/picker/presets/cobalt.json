@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "name": "cobalt",
+  "themes": [
+    "light"
+  ],
+  "light": {
+    "base": "#ffffff",
+    "gradient": {
+      "from": "#ffffff",
+      "via": "#ffffff",
+      "to": "#ffffff",
+      "angle": 0
+    },
+    "strong": "#152846",
+    "text": "#263e5b",
+    "dim": "#566980",
+    "faint": "#566980",
+    "rule": "rgba(25,35,45,0.16)",
+    "accent": "#174ea6",
+    "blockFill": "rgba(25,35,45,0.025)",
+    "ruleStrong": "rgba(25,35,45,0.24)",
+    "wash": "rgba(25,35,45,0.045)",
+    "dimSoft": "rgba(25,35,45,0.35)",
+    "warn": "#8a5a12",
+    "warnLine": "rgba(138,90,18,0.55)",
+    "ok": "#2f6b45",
+    "okLine": "rgba(47,107,69,0.52)",
+    "bad": "#a33a3a",
+    "code": {
+      "fill": "#16181d",
+      "text": "#d7dbe2",
+      "keyword": "#93b4e8",
+      "comment": "#6d7480"
+    }
+  },
+  "gradient": {
+    "shape": "flat",
+    "texture": "none"
+  },
+  "layout": "normal",
+  "fonts": {
+    "heading": {
+      "source": "bundled",
+      "family": "Poppins",
+      "size": 23
+    },
+    "body": {
+      "source": "bundled",
+      "family": "Guide Sans",
+      "size": 10.2
+    },
+    "code": {
+      "source": "bundled",
+      "family": "DejaVu Sans Mono",
+      "size": 7.5
+    }
+  }
+}

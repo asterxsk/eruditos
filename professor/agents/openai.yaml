@@ -1,0 +1,4 @@
+interface:
+  display_name: "Professor"
+  short_description: "Hard source questions, interactive teaching, tracked progress"
+  default_prompt: "Use $professor to teach me interactively using the hardest source questions, ask my question count per topic, and maintain a progress tracker."

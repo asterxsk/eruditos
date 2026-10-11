@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "name": "dark",
+  "themes": ["dark"],
+  "dark": {
+    "base": "#090a0c",
+    "gradient": { "from": "#12161f", "via": "#0c0f15", "to": "#0a0c10", "angle": 178 },
+    "strong": "#f2f5f9",
+    "text": "#c8cfd8",
+    "dim": "#8f98a6",
+    "faint": "#5d6672",
+    "rule": "rgba(255,255,255,0.075)",
+    "accent": "#79c0ff",
+    "blockFill": "rgba(255,255,255,0.035)",
+    "warn": "#e0a856",
+    "ok": "#78be96",
+    "code": {
+      "fill": "#0c0e12",
+      "text": "#cfd6de",
+      "keyword": "#79c0ff",
+      "comment": "#5d6672"
+    }
+  },
+  "gradient": {
+    "shape": "mesh",
+    "texture": "uniform",
+    "patch": { "x": 0.78, "y": 0.08, "radius": 0.30, "strength": 1.0 }
+  },
+  "layout": "normal",
+  "fonts": {
+    "heading": { "source": "bundled", "family": "Poppins", "size": 23 },
+    "body": { "source": "bundled", "family": "Guide Sans", "size": 10.2 },
+    "code": { "source": "bundled", "family": "DejaVu Sans Mono", "size": 7.5 }
+  }
+}

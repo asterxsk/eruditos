@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "name": "mono",
+  "themes": [
+    "light"
+  ],
+  "light": {
+    "base": "#f0f0ee",
+    "gradient": {
+      "from": "#f0f0ee",
+      "via": "#f0f0ee",
+      "to": "#f0f0ee",
+      "angle": 0
+    },
+    "strong": "#171717",
+    "text": "#363636",
+    "dim": "#61615d",
+    "faint": "#61615d",
+    "rule": "rgba(25,35,45,0.16)",
+    "accent": "#252525",
+    "blockFill": "rgba(25,35,45,0.025)",
+    "ruleStrong": "rgba(25,35,45,0.24)",
+    "wash": "rgba(25,35,45,0.045)",
+    "dimSoft": "rgba(25,35,45,0.35)",
+    "warn": "#8a5a12",
+    "warnLine": "rgba(138,90,18,0.55)",
+    "ok": "#2f6b45",
+    "okLine": "rgba(47,107,69,0.52)",
+    "bad": "#a33a3a",
+    "code": {
+      "fill": "#252525",
+      "text": "#eeeeea",
+      "keyword": "#ffffff",
+      "comment": "#b2b2ab"
+    }
+  },
+  "gradient": {
+    "shape": "flat",
+    "texture": "none"
+  },
+  "layout": "normal",
+  "fonts": {
+    "heading": {
+      "source": "bundled",
+      "family": "Guide Sans",
+      "size": 23
+    },
+    "body": {
+      "source": "bundled",
+      "family": "Guide Sans",
+      "size": 10.2
+    },
+    "code": {
+      "source": "bundled",
+      "family": "DejaVu Sans Mono",
+      "size": 7.5
+    }
+  }
+}

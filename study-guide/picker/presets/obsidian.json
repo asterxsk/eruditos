@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "name": "obsidian",
+  "themes": [
+    "dark"
+  ],
+  "dark": {
+    "base": "#111113",
+    "gradient": {
+      "from": "#111113",
+      "via": "#111113",
+      "to": "#111113",
+      "angle": 0
+    },
+    "strong": "#f4f4f5",
+    "text": "#d3d3d8",
+    "dim": "#a2a2ad",
+    "faint": "#a2a2ad",
+    "rule": "rgba(255,255,255,0.16)",
+    "accent": "#e6979b",
+    "blockFill": "rgba(255,255,255,0.025)",
+    "warn": "#e0a856",
+    "ok": "#78be96",
+    "code": {
+      "fill": "#131313",
+      "text": "#e9e5df",
+      "keyword": "#e6979b",
+      "comment": "#aaa69f"
+    },
+    "ruleStrong": "rgba(255,255,255,0.24)",
+    "wash": "rgba(255,255,255,0.05)",
+    "dimSoft": "rgba(255,255,255,0.35)"
+  },
+  "gradient": {
+    "shape": "flat",
+    "texture": "none"
+  },
+  "layout": "normal",
+  "fonts": {
+    "heading": {
+      "source": "bundled",
+      "family": "Poppins",
+      "size": 23
+    },
+    "body": {
+      "source": "bundled",
+      "family": "Guide Sans",
+      "size": 10.2
+    },
+    "code": {
+      "source": "bundled",
+      "family": "DejaVu Sans Mono",
+      "size": 7.5
+    }
+  }
+}
