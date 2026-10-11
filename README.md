@@ -2,7 +2,6 @@
 
 **A skills library for AI coding agents — interactive tutoring and print-ready study guides.**
 
-[![Install: npx skills](https://img.shields.io/badge/install-npx%20skills-25D8EE)](https://skills.sh)
 [![Skills: 2](https://img.shields.io/badge/skills-2-FF8A5C)](#whats-inside)
 
 Built on the [skills](https://skills.sh) CLI from [vercel-labs/skills](https://github.com/vercel-labs/skills).
