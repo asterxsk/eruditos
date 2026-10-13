@@ -1,0 +1,29 @@
+# Normalise all text files to LF in the repository and in every working copy.
+# Overrides core.autocrlf, so a Windows checkout and a Linux checkout are
+# byte-identical and Git stops rewriting line endings on checkout.
+* text=auto eol=lf
+
+# Keep the skill scripts and Markdown explicitly LF, even if a future
+# .gitattributes rule above is loosened.
+*.md   text eol=lf
+*.py   text eol=lf
+*.sh   text eol=lf
+*.json text eol=lf
+*.css  text eol=lf
+*.html text eol=lf
+*.svg  text eol=lf
+
+# Binary assets — never normalise, never diff.
+*.woff2 binary
+*.woff  binary
+*.ttf   binary
+*.otf   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.pdf   binary
+
+# Let Git produce readable diffs for these.
+*.md   diff=markdown
+*.py   diff=python
