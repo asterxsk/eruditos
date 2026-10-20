@@ -771,4 +771,5 @@ and written by `theme.py`. The `@page` background gotcha (above) applies to it.
 - [ ] Fonts actually embedded — read the names back out of the PDF (`pymupdf` `get_fonts()`); the bundled families assigned to the selected preset must appear, not unintended fallback fonts
 - [ ] One accent colour, hairline structure, grain visible but not obvious
 - [ ] Cards are the exception — more than two or three real cards on a page means boxes have crept back in where an open block belonged
+- [ ] No label is uppercase or tracked — `grep -nE 'text-transform:\s*uppercase' theme.css` and `grep -nE 'letter-spacing:\s*[0-9.]*[1-9]' theme.css` both empty, and `grep -nE '>[A-Z][A-Z /&·-]{3,}<' ` over the built HTML finds no shouted label. Every label reads `Worked example`, not `WORKED EXAMPLE`, and acronyms survived (`HRTF`, `ITD`, `FFT`, `8D` — not `Hrtf`)
 - [ ] Descriptive filename for the PDF itself
