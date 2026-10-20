@@ -297,6 +297,7 @@ Code lives in real files on disk and is read at render time, so a typo in a prog
 **Where the renderers must change to match this skill.** The block renderers live in `gen.py`; the per-section `c1.py` modules only pass item dicts.
 
 - `gen.py` gains a `math` renderer (display block, `class="eq"`, inline SVG from Step 5, optional `num` → `<span class="eqn">(1)</span>`) and an inline-math pass that rewrites `$…$` in `p`/`note`/`qa` prose to a small `<span class="imath">` SVG.
+- `gen.py` must **never uppercase label text**. Emit `Worked example`, `Watch the phase wrap`, `Quantity` — sentence case, acronyms intact. All label styling is one block in `base.css` (`.unit-tag, .nt, .work-h, thead th, .figcap, .cap, a.toc .d`), serif italic via `--font-label`.
 - `gen.py`'s `work`, `note`, `tip` renderers must **stop emitting the card wrapper**. Drop `.card`/`.card-h`/`.card-b` from those three; emit `.work-h` (label) + `.work-b` (steps) with `.work` as the open left-rule container, and `.nt` + body with `.note`/`.tip` as the open container. If they still wrap in `.card`, you get the old bordered box and the new CSS will look half-applied.
 - Keep `algo` → `.card`/`.card-h`/`.card-b` and `code` → `.code`/`.code-h` exactly as they are. Those are the two surviving cards.
 - `fig` renderer: `.fig` container with an `<img>` of the source diagram screenshot
@@ -312,7 +313,7 @@ Code lives in real files on disk and is read at render time, so a typo in a prog
   flow, keeping the number and three prompts with the start of the answer.
 - `table` renderer: drop any border/box wrapper; `table.data` is already open.
 - Unit and section chrome: each unit opens with `.unit` + `.unit-head`, whose `.unit-tag`
-  is the small uppercase mono tag above the `h1`. `.unitbreak` forces a new page before a
+  is the small italic serif tag above the `h1`. `.unitbreak` forces a new page before a
   unit — use it only when the user asked for one guide page per topic, never by default.
 
 ---
@@ -515,12 +516,14 @@ The light presets (`paper`, `sepia`) invert the same roles and give the code car
 
 Each of these was learned by shipping the wrong version first.
 
-1. **Cards are the exception.** The default container is no container: an uppercase label, a left hairline rule and space. A bordered box is a machine-like unit you are fencing off — real code, a numbered algorithm — not the wrapper for every item on the page. If a page carries more than two or three real cards, it has too many. A pile of bordered boxes is the fastest way to make the guide look templated; open blocks separated by rules read as a designed document. When in doubt, drop the fill and the border, keep the label and the space.
-2. **One accent hue, used sparingly.** Two or more saturated hues spread across section headers, table headers and blocks reads as a template. The accent belongs on: the pill label, the complexity line, the contents page numbers, the algorithm card's left edge at 55% opacity.
+**Before any of these: labels are serif italic, sentence case, untracked.** Never `text-transform: uppercase`, never `letter-spacing`, never the mono face — on the unit tag, the callout head, the worked-example head, the table header, the figure caption, the contents sub-tag or the footer. `WORKED EXAMPLE` in tracked mono is the strongest generated-document tell there is, and it destroys acronyms (`HRTF` becomes `Hrtf`). Casing lives in the generator's source string, so `Worked example` and `HRTFs after 3D Tune-In` come out correctly. They share one rule block in `base.css`, driven by `--font-label`; do not restyle one label without the others.
+
+1. **Cards are the exception.** The default container is no container: an italic serif label, a left hairline rule and space. A bordered box is a machine-like unit you are fencing off — real code, a numbered algorithm — not the wrapper for every item on the page. If a page carries more than two or three real cards, it has too many. A pile of bordered boxes is the fastest way to make the guide look templated; open blocks separated by rules read as a designed document. When in doubt, drop the fill and the border, keep the label and the space.
+2. **One accent hue, used sparingly.** Two or more saturated hues spread across section headers, table headers and blocks reads as a template. The accent belongs on: the card label, the complexity line, the contents page numbers, the algorithm card's left edge at 55% opacity.
 3. **Structure comes from hairlines, not fills.** Rules, indentation and whitespace do the work. Filled colour blocks and boxes around every item make a document look like a slide deck.
 4. **The page gradient must be almost invisible.** `#12161f → #0a0c10` over a full A4 page is a delta of about 8 RGB values. Anything more looks like cloth.
 5. **No CSS text effects.** `background-clip: text` renders as a solid gradient bar behind the glyphs in PDF. If a heading needs weight, use a bigger font weight.
-6. **Small radii.** `4px` on the two surviving cards, `2px` on pills. Large radii plus gradients is the templated look.
+6. **Small radii.** `4px` on the two surviving cards; no radius anywhere else — labels are type, not chips. Large radii plus gradients is the templated look.
 7. **Dark code cards sit on dark pages.** Give them a slightly *different* dark (`#0a0d12`) and the muted syntax palette below; do not lift them with light backgrounds.
 
 ### Two real cards, everything else opens
@@ -528,14 +531,14 @@ Each of these was learned by shipping the wrong version first.
 | Container | What it is | Chrome |
 |---|---|---|
 | **Code card** (`.code`) | a file listing. The fake window chrome is meaningful here — it says "this is a program". | kept: window dots + filename bar, `#0a0d12` body, `1px` border |
-| **Algorithm card** (`.card`) | a numbered step procedure. Fenced off because it is machine-like and self-contained. | kept: outlined mono pill + title header, mono body, `2px` accent left edge |
+| **Algorithm card** (`.card`) | a numbered step procedure. Fenced off because it is machine-like and self-contained. | kept: italic accent label + title header, mono body, `2px` accent left edge |
 | Worked example (`.work`) | a hand-worked derivation | **open** — `2px` dim left rule, label, indented mono steps |
-| Note / tip (`.note` / `.tip`) | a called-out warning or hint | **open** — left rule in amber/green, uppercase mono label, no fill, no border |
+| Note / tip (`.note` / `.tip`) | a called-out warning or hint | **open** — left rule in amber/green, italic serif label, no fill, no border |
 | Definition / prose (`p`) | narration and definitions | **open** — no chrome at all, just spacing |
 | Q&A (`.qa`) | question + answer | **open** — `1px` bottom hairline (already) |
 | Table (`.data`) | tabular data | **open** — hairlines only; the header wash stays, the box does not |
 
-The open variants all share one shape: a **left hairline rule or margin indent**, an **uppercase mono label**, and **space**. No fill, no border, no radius — that is what stops the page reading as a grid of boxes.
+The open variants all share one shape: a **left hairline rule or margin indent**, an **italic serif label in sentence case**, and **space**. No fill, no border, no radius — that is what stops the page reading as a grid of boxes.
 
 ### Typography
 
@@ -543,12 +546,13 @@ The open variants all share one shape: a **left hairline rule or margin indent**
 |---|---|---|
 | Headings, block titles | Poppins | 600, −0.7px tracking on the cover only |
 | Body | Guide Sans | 10.2pt / 1.55 line-height |
-| Code, algorithms, labels, table headers | DejaVu Sans Mono | 7.5pt code, 8.1pt algorithms, 7.4pt labels |
+| Code, algorithms, table figures | DejaVu Sans Mono | 7.5pt code, 8.1pt algorithms |
+| Every label (unit tag, callout head, worked-example head, table header, caption, footer) | Guide Serif italic | 9.6pt, sentence case, no tracking |
 | Maths | Computer Modern look (MathJax default), STIX/DejaVu Serif fallback | sized to body; never the mono font |
 
 Install once if missing: `fonts-poppins`, `fonts-lato` (Debian ships both as `fonts-google-fonts` / `fonts-lato`); otherwise fall back to any humanist sans plus DejaVu Sans Mono, which is present everywhere and is the most legible monospace at 7.5pt.
 
-Table headers are **uppercase mono at 7.6pt with 1.2px letter-spacing** on a 3.5% white wash. That single choice does more work than any colour.
+Table headers are **serif italic at 9.6pt in sentence case** on a 3.5% wash. No tracking, no capitals. `WORKED EXAMPLE` becomes `Worked example`; acronyms stay as written (`HRTF`, `ITD`, `FFT`), because casing now lives in the source text rather than in `text-transform`.
 
 **Maths rule.** Equations are set in a serif math font — MathJax's default Computer Modern, or STIX/DejaVu Serif as the fallback — at body size. Never in the mono font used for algorithms and code: mono numerals and operators read as a terminal, not as mathematics. Colour is the body text colour (`#c8cfd8`); the equation number is in the faint tone (`#5d6672`).
 
@@ -556,15 +560,15 @@ Table headers are **uppercase mono at 7.6pt with 1.2px letter-spacing** on a 3.5
 
 | Component | Recipe |
 |---|---|
-| Section header | 23pt white title, tiny uppercase mono tag above, one-line dim blurb, `1px` rule above the whole block |
-| Algorithm card | header bar = outlined mono pill + title, body = mono 8.1pt, `pre-wrap`, `2px` accent left edge |
+| Section header | 23pt title, small italic serif tag above, one-line dim blurb, `1px` rule above the whole block |
+| Algorithm card | header bar = italic accent label + title, body = mono 8.1pt, `pre-wrap`, `2px` accent left edge |
 | Code card | fake window chrome (three 1.9mm dots at 16% white) + filename, `#0a0d12` body, muted syntax |
-| Worked example | `2px` dim left rule, uppercase mono label, indented mono steps, amber/green/red spans for highlight/result/error |
-| Callout (`note` / `tip`) | `2px` amber or green left rule, uppercase mono label, body indented — no fill, no border |
+| Worked example | `2px` dim left rule, italic serif label, indented mono steps, amber/green/red spans for highlight/result/error |
+| Callout (`note` / `tip`) | `2px` amber or green left rule, italic serif label, body indented — no fill, no border |
 | Display equation (`.eq`) | centred SVG, `margin: 7mm 0`, optional `(N)` floated right in mono faint, `page-break-inside: avoid` |
 | Complexity line | mono 7.4pt in the accent, `1px` hairline above, at the bottom of the algo/code card |
 | Q&A | no card — 4mm padding, `1px` bottom hairline, question in Poppins 9.6pt light, answer dim |
-| Contents | rows separated by hairlines, number in dim mono, page number floated right in the accent |
+| Contents | rows separated by hairlines, number in dim mono, page number floated right in the accent, sub-tag in italic serif |
 
 ---
 

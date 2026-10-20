@@ -43,10 +43,10 @@ class Handler(BaseHTTPRequestHandler):
                 <style>{css}
                 body{{margin:0;padding:22px;background:{pal['base']};background-image:linear-gradient(160deg,{pal['gradient']['from']},{pal['gradient']['to']});color:{pal['text']}}}
                 h1{{font-size:23px;color:{pal['strong']}}} .sample-label{{color:{pal['accent']}}}
-                </style><body><div class="sample-label">{name.upper()} / STUDY GUIDE</div>
+                </style><body><div class="sample-label">{name} / study guide</div>
                 <h1>Understanding the topic</h1><p>A concise explanation, with clear steps and readable labels.</p>
-                <div class="card"><div class="card-h">METHOD</div><div class="card-b">1. Identify the given values.<br>2. Apply the formula.<br>3. Check the result.</div></div>
-                <div class="work"><div class="work-h">WORKED EXAMPLE</div><div class="work-b">Result = 24 units</div></div>
+                <div class="card"><div class="card-h">Method</div><div class="card-b">1. Identify the given values.<br>2. Apply the formula.<br>3. Check the result.</div></div>
+                <div class="work"><div class="work-h">Worked example</div><div class="work-b">Result = 24 units</div></div>
                 <div class="code"><div class="code-h"><span class="name">example.c</span></div><pre>return result;</pre></div>
                 <table class="data"><tr><th>Quantity</th><th>Value</th></tr><tr><td>Time</td><td>O(n)</td></tr></table>
                 </body></html>"""

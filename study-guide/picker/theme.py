@@ -36,7 +36,14 @@ BUNDLED = {
                    "stack": '"Guide Sans", Georgia, serif'},
     "DejaVu Sans Mono": {"files": {400: "DejaVuSansMono-400.woff2", 700: "DejaVuSansMono-700.woff2"},
                          "stack": '"DejaVu Sans Mono", "Cascadia Mono", Consolas, monospace'},
+    # Labels are set in serif italic, never in tracked mono capitals.
+    "Guide Serif": {"files": {400: "GuideSerif-400.woff2"},
+                    "stack": '"Guide Serif", Georgia, "Times New Roman", serif'},
 }
+
+# Label faces carry an italic cut; the manifest above only names roman files, so
+# the italic is emitted separately rather than pretending weight 400 has both.
+LABEL_ITALIC = "GuideSerif-400i.woff2"
 
 LAYOUTS = {
     # scale multiplies the base type ramp and the vertical rhythm together
@@ -206,7 +213,7 @@ def make_grain_patch(cfg: dict, out_path: Path, w: int = 1240, h: int = 1754, se
 def _font_faces(cfg: dict) -> str:
     """@font-face for each role's family. A local family falls back to a bundled url."""
     lines = []
-    for role in ("heading", "body", "code"):
+    for role in ("heading", "body", "code", "label"):
         spec = (cfg.get("fonts") or {}).get(role)
         if not spec:
             continue
@@ -225,15 +232,26 @@ def _font_faces(cfg: dict) -> str:
                 f' src: url("fonts/{filename}") format("woff2");'
                 f" font-weight: {weight}; font-style: normal; font-display: swap; }}"
             )
+    # the label role always ships an italic: kickers, tags and captions are set in it
+    label_fam = (((cfg.get("fonts") or {}).get("label") or {}).get("family")
+                 or "Guide Serif")
+    if label_fam in BUNDLED and (FONTS / LABEL_ITALIC).exists():
+        lines.append(
+            "@font-face {"
+            f' font-family: "{label_fam}";'
+            f' src: url("fonts/{LABEL_ITALIC}") format("woff2");'
+            f" font-weight: 400; font-style: italic; font-display: swap; }}"
+        )
     return "\n".join(lines)
 
 
 def _role_stack(cfg: dict, role: str) -> str:
     spec = (cfg.get("fonts") or {}).get(role) or {}
-    fam = spec.get("family", "Guide Sans")
+    fam = spec.get("family", "Guide Serif" if role == "label" else "Guide Sans")
     if spec.get("source") == "local":
         return f'"{fam}", "Segoe UI", sans-serif'
-    return BUNDLED.get(fam, BUNDLED["Guide Sans"])["stack"]
+    default = "Guide Serif" if role == "label" else "Guide Sans"
+    return BUNDLED.get(fam, BUNDLED[default])["stack"]
 
 
 def _tokens(theme: dict) -> str:
@@ -328,12 +346,14 @@ def emit_css(cfg: dict, theme_name: str, base_css: str | None = None) -> str:
     heading = _role_stack(cfg, "heading")
     body = _role_stack(cfg, "body")
     code = _role_stack(cfg, "code")
+    label = _role_stack(cfg, "label")
     ramp = (
         f"  --type-scale: {layout['scale']};\n"
         f"  --rhythm: {layout['rhythm']};\n"
         f"  --font-heading: {heading};\n"
         f"  --font-body: {body};\n"
-        f"  --font-code: {code};"
+        f"  --font-code: {code};\n"
+        f"  --font-label: {label};"
     )
     if base_css is None:
         base_css = BASE_CSS.read_text(encoding="utf-8")
@@ -360,7 +380,7 @@ def _copy_fonts(cfg: dict, out_dir: Path) -> list[str]:
 
     dest = out_dir / "fonts"
     copied = []
-    for role in ("heading", "body", "code"):
+    for role in ("heading", "body", "code", "label"):
         spec = (cfg.get("fonts") or {}).get(role) or {}
         if spec.get("source") == "local":
             continue                      # a local family is not ours to ship
@@ -376,6 +396,17 @@ def _copy_fonts(cfg: dict, out_dir: Path) -> list[str]:
             if not target.exists() or target.read_bytes() != src.read_bytes():
                 shutil.copyfile(src, target)
             copied.append(f"fonts/{filename}")
+    # the label italic is not in any manifest dict, so copy it explicitly
+    label_fam = (((cfg.get("fonts") or {}).get("label") or {}).get("family")
+                 or "Guide Serif")
+    if label_fam in BUNDLED:
+        src = FONTS / LABEL_ITALIC
+        if src.exists():
+            dest.mkdir(parents=True, exist_ok=True)
+            target = dest / LABEL_ITALIC
+            if not target.exists() or target.read_bytes() != src.read_bytes():
+                shutil.copyfile(src, target)
+            copied.append(f"fonts/{LABEL_ITALIC}")
     return copied
 
 

@@ -139,7 +139,7 @@
     "fonts": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Role mapping. Weight is fixed per role (see the bundled manifest); only family and size are chosen.",
+      "description": "Role mapping. Weight is fixed per role (see the bundled manifest); only family and size are chosen. 'label' controls every small label — unit tag, callout head, table header, caption, footer — and defaults to the bundled serif italic. It is not a free choice: labels are serif italic, sentence case, untracked.",
       "properties": {
         "heading": {
           "$ref": "#/$defs/fontRole"
@@ -148,6 +148,9 @@
           "$ref": "#/$defs/fontRole"
         },
         "code": {
+          "$ref": "#/$defs/fontRole"
+        },
+        "label": {
           "$ref": "#/$defs/fontRole"
         }
       }

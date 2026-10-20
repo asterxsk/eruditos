@@ -20,6 +20,36 @@ body {
   color: var(--text, #c8cfd8);
   -weasy-hyphens: none;
 }
+
+/* ---------------------------------------------------------------- labels
+ * ONE label style for the whole guide, and it is not a tracked mono capital.
+ * Tracked uppercase monospace above a serif heading is the single strongest
+ * "generated document" tell: it reads as a UI chip pasted onto a page. Every
+ * label here — unit tag, callout head, worked-example head, table header,
+ * figure caption, footer — is serif italic, sentence case, untracked, set one
+ * step smaller than the body. Casing lives in the source text: the generator
+ * emits "Worked example", not "WORKED EXAMPLE", so acronyms (HRTF, ITD, FFT)
+ * survive. Never add text-transform or letter-spacing to a label.
+ */
+:root { --label-size: calc(9.6pt * var(--type-scale, 1)); }
+
+/* The label body sits a step below its own face and colour. */
+.unit-tag,
+.note .nt, .tip .nt,
+.work-h,
+table.data thead th,
+.fig .figcap,
+.cap,
+a.toc .d,
+.sample-label,
+.foot {
+  font-family: var(--font-label, var(--font-heading));
+  font-style: italic;
+  font-weight: 400;
+  font-size: var(--label-size);
+  letter-spacing: 0;
+  text-transform: none;
+}
 h1, h2, h3, h4 { font-family: var(--font-heading); font-weight: 600; margin: 0; }
 /* A full line-height gap between paragraphs reads loose for continuous prose
    at this size. Half a line, and the same gap after the last one. */
@@ -39,8 +69,9 @@ p { margin: 0 0 4.6pt 0; }
   page-break-inside: avoid; page-break-after: avoid;
 }
 .unit-tag {
-  font-family: var(--font-code); font-size: 7.4pt;
-  color: var(--faint, #5d6672); letter-spacing: 2.2px; text-transform: uppercase;
+  color: var(--faint, #5d6672);
+  display: block;
+  margin-bottom: 1mm;
 }
 .unit-head h1 { font-size: 23pt; color: var(--strong, #fff); margin-top: 3mm; line-height: 1.14; }
 .unit-head .blurb { color: var(--dim, #8f98a6); font-size: 9.8pt; margin-top: 3.4mm; }
@@ -75,9 +106,12 @@ h3.sub {
   page-break-after: avoid;
 }
 .card-h .pill {
-  font-family: var(--font-code); font-size: 6.8pt; color: var(--accent, #79c0ff);
-  letter-spacing: .6px; border: 1px solid var(--accent-soft, rgba(121,192,255,0.32));
-  border-radius: 2px; padding: .4mm 1.8mm; margin-right: 3mm;
+  /* an outlined mono chip in caps is the same tell as a tracked label: it reads
+     as a UI badge pasted onto paper. The card header already says what it is. */
+  font-family: var(--font-label, var(--font-heading)); font-style: italic;
+  font-size: var(--label-size); color: var(--accent, #79c0ff);
+  letter-spacing: 0; text-transform: none;
+  margin-right: 3mm;
 }
 .card-b {
   padding: 3.6mm 4.6mm 4mm; font-family: var(--font-code); font-size: 8.1pt;
@@ -102,9 +136,9 @@ h3.sub {
 }
 .code-h .name { font-family: var(--font-code); font-size: 8.2pt; color: var(--code-text, #cfd6de); margin-left: 2.6mm; }
 .code-h .lang {
-  float: right; font-family: var(--font-code); font-size: 6.8pt;
-  color: var(--faint, #6b7482); border: 1px solid var(--rule-strong, rgba(255,255,255,0.12));
-  border-radius: 2px; padding: .3mm 1.8mm; letter-spacing: 1px;
+  /* the language tag is a label, not a badge: italic serif, no border, no tracking */
+  float: right; font-family: var(--font-label, var(--font-heading)); font-style: italic;
+  font-size: var(--label-size); color: var(--faint, #6b7482); letter-spacing: 0;
 }
 .code pre {
   margin: 0; padding: 3.8mm 4.4mm; font-family: var(--font-code);
@@ -130,8 +164,7 @@ h3.sub {
 .note { border-left-color: var(--warn-line, rgba(224,168,86,0.60)); }
 .tip  { border-left-color: var(--ok-line,  rgba(120,190,150,0.60)); }
 .note .nt, .tip .nt {
-  font-family: var(--font-code); font-size: 7.6pt; letter-spacing: 1.6px;
-  text-transform: uppercase; margin-bottom: 2mm;
+  margin-bottom: 1.6mm;
 }
 .note .nt { color: var(--warn, #e0a856); }
 .tip  .nt { color: var(--ok, #78be96); }
@@ -143,8 +176,8 @@ h3.sub {
   background: none; border: none; border-left: 2px solid var(--dim-soft, rgba(150,160,175,0.40));
 }
 .work-h {
-  padding: 0 0 2mm 0; font-family: var(--font-code); font-size: 7.6pt;
-  color: var(--dim, #8f98a6); letter-spacing: 1.6px; text-transform: uppercase;
+  padding: 0 0 1.6mm 0;
+  color: var(--dim, #8f98a6);
   background: none; border: none; page-break-after: avoid;
 }
 .work-b {
@@ -175,24 +208,22 @@ span.imath { vertical-align: -0.35ex; }
 }
 .fig svg.figsvg { width: 100%; height: auto; max-height: 94mm; }
 .fig .figcap {
-  font-family: var(--font-code); font-size: 7.4pt; color: var(--faint, #5d6672);
+  color: var(--faint, #5d6672);
   margin-top: 2.4mm; text-align: left; line-height: 1.5;
 }
 
 /* ---------------------------------------------------------------- tables */
 table.data { width: 100%; border-collapse: collapse; margin: 0 0 5mm 0; font-size: 9.2pt; }
 table.data thead th {
-  text-align: left; padding: 2.8mm 3.4mm; color: var(--dim, #8f98a6);
+  text-align: left; padding: 2.6mm 3.4mm; color: var(--dim, #8f98a6);
   background: var(--wash, rgba(255,255,255,0.035));
-  font-family: var(--font-code); font-weight: 400;
-  font-size: 7.6pt; letter-spacing: 1.2px; text-transform: uppercase;
   border-bottom: 1px solid var(--rule-strong, rgba(255,255,255,0.11));
 }
 table.data td { padding: 2.6mm 3.4mm; border-bottom: 1px solid var(--rule, rgba(255,255,255,0.055)); color: var(--text, #c0c8d2); }
 table.data td.m { font-family: var(--font-code); font-size: 8.2pt; color: var(--dim, #a8b2be); }
 table.data tr { page-break-inside: avoid; }
 .cap {
-  font-family: var(--font-code); font-size: 7.4pt; color: var(--faint, #5d6672);
+  color: var(--faint, #5d6672);
   margin: -3.4mm 0 5mm 0; line-height: 1.5;
 }
 
@@ -234,8 +265,7 @@ a.toc .t { font-family: var(--font-heading); font-weight: 500; font-size: 10.6pt
 /* The tag sits on its own line under the title. Left inline it butts straight
    against the last word of a long title, and its margin-top does nothing,
    because a margin-top on an inline box is ignored. */
-a.toc .d { display: block; margin-left: 11mm; color: var(--faint, #5d6672);
-           font-size: 7.6pt; font-family: var(--font-code); letter-spacing: 1px; }
+a.toc .d { display: block; margin-left: 11mm; color: var(--faint, #5d6672); }
 
 .end { margin-top: 12mm; padding: 10mm 0 0 0; border-top: 1px solid var(--rule-strong, rgba(255,255,255,0.10)); }
 
