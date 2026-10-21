@@ -41,7 +41,7 @@ class Handler(BaseHTTPRequestHandler):
                 css = theme.emit_css(cfg, mode).replace('url("fonts/', 'url("/fonts/').replace("url('fonts/", "url('/fonts/")
                 sample = f"""<!doctype html><html lang="en"><meta charset="utf-8">
                 <style>{css}
-                body{{margin:0;padding:22px;background:{pal['base']};background-image:linear-gradient(160deg,{pal['gradient']['from']},{pal['gradient']['to']});color:{pal['text']}}}
+                body{{margin:0;padding:22px;background:{pal['base']};color:{pal['text']}}}
                 h1{{font-size:23px;color:{pal['strong']}}} .sample-label{{color:{pal['accent']}}}
                 </style><body><div class="sample-label">{name} / study guide</div>
                 <h1>Understanding the topic</h1><p>A concise explanation, with clear steps and readable labels.</p>

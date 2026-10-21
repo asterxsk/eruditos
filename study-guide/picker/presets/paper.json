@@ -4,7 +4,7 @@
   "themes": ["light"],
   "light": {
     "base": "#f7f5f0",
-    "gradient": { "from": "#eef0f6", "via": "#f7f5f0", "to": "#f2efe6", "angle": 0 },
+    "gradient": { "from": "#f7f5f0", "via": "#f7f5f0", "to": "#f7f5f0", "angle": 0 },
     "strong": "#1a1c22",
     "text": "#34383f",
     "dim": "#676c76",

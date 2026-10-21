@@ -60,6 +60,11 @@ p { margin: 0 0 4.6pt 0; }
    break the cover and the contents share page 1 and the last couple of rows
    spill onto a near-empty page of their own. */
 .contents  { page-break-before: always; page-break-after: always; }
+/* Ten or so rows at the full unit opening spill the last one or two onto a
+   near-empty sheet. The contents page has no body text under the head, so it
+   can afford a tighter opening than a real unit. */
+.contents .unit-head { padding-top: 4mm; margin-bottom: 4mm; }
+.contents .unit-head h1 { font-size: 21pt; }
 .unit      { margin-top: calc(15mm * var(--rhythm, 1.15)); }
 
 .unit-head {
@@ -228,9 +233,10 @@ table.data tr { page-break-inside: avoid; }
 }
 
 /* ------------------------------------------------------------------- q&a */
+/* No rule under each item: the unit's opening rule is the only divider in the
+   document. Seventy hairlines read as a form; space separates the items. */
 .qa {
-  padding: 3.4mm 0; margin-bottom: 1mm; border-bottom: 1px solid var(--rule, rgba(255,255,255,0.055));
-  page-break-inside: avoid;
+  padding: 3.4mm 0; margin-bottom: calc(5.5mm * var(--rhythm, 1.15)); page-break-inside: avoid;
 }
 .qa .q { font-family: var(--font-heading); font-weight: 500; font-size: 9.6pt; color: var(--strong, #dfe5ec); margin-bottom: 1.6mm; }
 .qa .a { font-size: 9.6pt; color: var(--text, #b6bfca); }
@@ -251,7 +257,7 @@ table.data tr { page-break-inside: avoid; }
 
 /* ------------------------------------------------------------- contents */
 .contents-item {
-  padding: calc(4mm * var(--rhythm, 1.15)) 0;
+  padding: calc(2.6mm * var(--rhythm, 1.15)) 0;
   border-bottom: 1px solid var(--rule, rgba(255,255,255,0.06));
   page-break-inside: avoid;
 }

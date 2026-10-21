@@ -302,9 +302,16 @@ def _alpha(colour: str, a: float) -> str:
 
 
 def _gradient_layers(t: dict) -> str:
-    """The shape as literal CSS layers. No var() composition (invalid in WeasyPrint)."""
+    """The shape as literal CSS layers. No var() composition (invalid in WeasyPrint).
+
+    A preset whose three stops are the same colour emits no layer at all: a
+    full-page gradient is only invisible when it is flat, and any visible one
+    makes each page look like a different sheet.
+    """
     g = t.get("gradient", {})
     frm, via, to = g.get("from", t["base"]), g.get("via", t["base"]), g.get("to", t["base"])
+    if frm.lower() == via.lower() == to.lower():
+        return ""
     ang = g.get("angle", 178)
     return (f'linear-gradient({ang}deg, {frm} 0%, {via} 45%, {to} 100%)')
 
@@ -327,20 +334,30 @@ def emit_css(cfg: dict, theme_name: str, base_css: str | None = None) -> str:
     # margins, which measured ~19.8mm and left an ungrain'd strip on the left.
     sheet = f'{PAGE["w"]:g}mm {PAGE["h"]:g}mm'
     if texture == "none":
-        img_layer, img_size, img_repeat = "", "", ""
+        layers, sizes, repeats = [], [], []
     elif use_patch:
-        img_layer, img_size, img_repeat = ('url("grain-patch.png"), ', f"{sheet}, ", "no-repeat, ")
+        layers, sizes, repeats = ['url("grain-patch.png")'], [sheet], ["no-repeat"]
     else:
-        img_layer, img_size, img_repeat = 'url("grain.png"), ', "220px 220px, ", "repeat, "
+        layers, sizes, repeats = ['url("grain.png")'], ["220px 220px"], ["repeat"]
+    if grad:                      # a flat preset deliberately emits no gradient layer
+        layers.append(grad)
+        sizes.append(sheet)
+        repeats.append("no-repeat")
+    if layers:                    # an empty list would emit `background-size: ;`
+        bg_line = f'  background-image: {", ".join(layers)};\n'
+        bg_geom = (
+            f'  background-size: {", ".join(sizes)};\n'
+            f'  background-repeat: {", ".join(repeats)};\n'
+            f'  background-position: {-PAGE["left"]:g}mm {-PAGE["top"]:g}mm;\n'
+        )
+    else:
+        bg_line = bg_geom = ""
     page_bg = (
         f'  size: A4;\n'
         f'  margin: {PAGE["top"]:g}mm {PAGE["right"]:g}mm '
         f'{PAGE["bottom"]:g}mm {PAGE["left"]:g}mm;\n'
         f'  background-color: {theme["base"]};\n'
-        f'  background-image: {img_layer}{grad};\n'
-        f'  background-size: {img_size}{sheet};\n'
-        f'  background-repeat: {img_repeat}no-repeat;\n'
-        f'  background-position: {-PAGE["left"]:g}mm {-PAGE["top"]:g}mm;\n'
+        + bg_line + bg_geom
     )
     faces = _font_faces(cfg)
     heading = _role_stack(cfg, "heading")

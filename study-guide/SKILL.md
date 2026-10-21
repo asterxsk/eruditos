@@ -18,6 +18,9 @@ conversation**, not as a question card:
 
 - How much of the source should it cover - everything, the core topics, or an explicit list?
 - Which guide type: textbook, walkthrough, or QA?
+- Only for QA: how many question wordings should each item carry? **Recommend three** -
+  it is enough to show the question can be asked several ways without padding the
+  guide out. Take any number the user gives.
 - Only when implementation code is requested: keep the source's code language, or rewrite it into one language?
 - Dark pages (screen), light pages with dark code cards (prints cheap), or both files?
 
@@ -42,11 +45,12 @@ do not jump from the problem to the answer. Respect calculator use for arithmeti
 Keep source notation and include the relevant source diagram screenshots. Restrict
 theory to what is needed to understand and solve the requested problems.
 
-**3. QA** — an exam question bank. Each numbered item contains exactly **three
-ways of asking the same question**, followed by **one shared model answer**.
-The three wordings must test the same knowledge, have equivalent scope and depth,
-and be fully answered by that one answer. They are not three different questions,
-subparts, or three separately answered prompts. Keep meaningful wording variation.
+**3. QA** — an exam question bank. Each numbered item contains **two or more ways of
+asking the same question**, followed by **one shared model answer**. The default and
+recommended count is **three**; ask in Step 0 and use whatever the user asks for.
+The wordings must test the same knowledge, have equivalent scope and depth,
+and be fully answered by that one answer. They are not different questions,
+subparts, or separately answered prompts. Keep meaningful wording variation.
 
 Use this vertical layout for every QA item:
 
@@ -59,16 +63,23 @@ Q. Second wording of the same question.
 
 Q. Third wording of the same question.
 
-Ans. One model answer covering all three wordings.
+Ans. One model answer covering all the wordings.
 ```
 
 `1` is the **question number**, incremented once per item, not a heading or a count
-of question variants. Keep all three Q lines separate, followed by the single Ans
+of question variants. Keep each Q line separate, followed by the single Ans
 block. Write the answer in proper English: complete, grammatically correct sentences,
 with the expected technical terminology. Use coherent paragraphs or numbered steps
 when appropriate to the answer. Highlight the marking keywords with bold accent
 text (`<strong class="keyword">`), not the whole answer. Match the user's marks and
 exam format; do not assume a mark allocation that was not supplied.
+
+**QA for a code lab.** When the source is a lab manual of programs rather than an
+exam paper, the question is a one-line statement of the task and the answer is the
+program plus its console output — not a prose answer. Keep the number, the single
+question sentence, then the code card and the output card beneath it. Do not print
+`Q.` or `Ans.` labels, and do not restate the question inside the code card. One
+task is one page item; do not split a task across two numbered items.
 
 Place **★** beside the item number for questions judged likely in the exam. Base
 stars on supplied past-paper recurrence, stated exam priorities or emphasis in the
@@ -210,10 +221,13 @@ Block types: `h2`, `h3`, `p`, `math`, `algo`, `code`, `work`, `fig`, `table`, `n
 
 Only choose block types allowed by the requested guide type. For a QA guide, use
 one `qa` item per shared answer, not three independent items. `num` is the item
-number; `questions` must contain exactly three equivalent wordings. `answer` holds
-the single model answer; `keywords` identifies the terms to highlight;
-`exam_likely` controls the star. Store supporting likelihood evidence internally,
-not as extra Q lines or source citations in the finished guide.
+number; `questions` holds the equivalent wordings — **three unless the user asked
+for another count in Step 0** — and every one of them must be answerable by the one
+`answer`. For a code lab, `questions` holds a single task sentence and can be
+emitted without the `Q.` prefix; the answer is the code and output cards. `keywords`
+identifies the terms to highlight; `exam_likely` controls the star. Store supporting
+likelihood evidence internally, not as extra Q lines or source citations in the
+finished guide.
 
 
 `math` is a display equation — its own block, rendered to SVG in Step 5, centred with space above and below, `num` optional for a right-aligned `(1)` when the prose cites it later. It is never inlined into a paragraph.
@@ -305,12 +319,15 @@ Code lives in real files on disk and is read at render time, so a typo in a prog
   Include every diagram relevant to the requested scope; do not replace source
   screenshots with redraws. A supplementary SVG explanation may accompany the image.
 - QA guide renderer: emit `.qa` with one `.qa-num` line containing the item number
-  and optional `.qa-star`, then three distinct `.q` paragraphs prefixed `Q.`, then
-  one `.a` block prefixed `Ans.`. Escape content before inserting safe keyword
+  and optional `.qa-star`, then one `.q` paragraph per wording (default three,
+  prefixed `Q.` unless the guide is a code lab), then one `.a` block prefixed
+  `Ans.` Escape content before inserting safe keyword
   markup; highlight only the intended words using `strong.keyword`. Do not repeat
-  the number on each Q line, use three columns, or provide three answers. Keep a
-  short item together; for an answer longer than a page, use `.qa-long` so it can
-  flow, keeping the number and three prompts with the start of the answer.
+  the number on each Q line, use three columns, or provide several answers. Emit
+  no rule between items — `.qa` is deliberately borderless so the unit head is the
+  only divider. Keep a short item together; for an answer longer than a page, use
+  `.qa-long` so it can flow, keeping the number and the prompts with the start of
+  the answer.
 - `table` renderer: drop any border/box wrapper; `table.data` is already open.
 - Unit and section chrome: each unit opens with `.unit` + `.unit-head`, whose `.unit-tag`
   is the small italic serif tag above the `h1`. `.unitbreak` forces a new page before a
@@ -445,7 +462,7 @@ for f in files:
     if frac < 0.72: print("sparse page", n, round(frac, 2))
 ```
 
-Deliberate exceptions are the cover, the contents page and a closing page. Anything else under 72% is a bug — almost always a card that could not split, or a forced section break.
+Deliberate exceptions are the cover, the contents page and a closing page. Anything else under 72% is a bug — almost always a card that could not split, or a forced section break. One gap is unavoidable: `.code` sets `overflow: hidden`, so a card cannot break across pages, and the last item before a new unit can leave a quarter page empty rather than splitting its listing. That is the preferred failure — splitting a code card mid-listing reads worse than the gap.
 
 **B. Top-edge seam — finds the flat band.**
 
@@ -518,10 +535,11 @@ Each of these was learned by shipping the wrong version first.
 
 **Before any of these: labels are serif italic, sentence case, untracked.** Never `text-transform: uppercase`, never `letter-spacing`, never the mono face — on the unit tag, the callout head, the worked-example head, the table header, the figure caption, the contents sub-tag or the footer. `WORKED EXAMPLE` in tracked mono is the strongest generated-document tell there is, and it destroys acronyms (`HRTF` becomes `Hrtf`). Casing lives in the generator's source string, so `Worked example` and `HRTFs after 3D Tune-In` come out correctly. They share one rule block in `base.css`, driven by `--font-label`; do not restyle one label without the others.
 
+0. **Dividers belong to units, not items.** One `1px` rule opens each unit (`.unit-head`'s top border) and nothing else on the page has one. A hairline under every Q&A row turns a 70-item guide into 70 stripes and reads as a form. If a reviewer asks why two items blur together, add vertical space (about 5mm between items), not a rule. The same applies to the `table.data` body and the code cards: no extra frames.
 1. **Cards are the exception.** The default container is no container: an italic serif label, a left hairline rule and space. A bordered box is a machine-like unit you are fencing off — real code, a numbered algorithm — not the wrapper for every item on the page. If a page carries more than two or three real cards, it has too many. A pile of bordered boxes is the fastest way to make the guide look templated; open blocks separated by rules read as a designed document. When in doubt, drop the fill and the border, keep the label and the space.
 2. **One accent hue, used sparingly.** Two or more saturated hues spread across section headers, table headers and blocks reads as a template. The accent belongs on: the card label, the complexity line, the contents page numbers, the algorithm card's left edge at 55% opacity.
 3. **Structure comes from hairlines, not fills.** Rules, indentation and whitespace do the work. Filled colour blocks and boxes around every item make a document look like a slide deck.
-4. **The page gradient must be almost invisible.** `#12161f → #0a0c10` over a full A4 page is a delta of about 8 RGB values. Anything more looks like cloth.
+4. **The page background is one flat colour.** The `@page` gradient is a light wash at best: keep any delta between its lightest and darkest stop within about 8 RGB values, and prefer `base` for all three stops when a reviewer says the pages look different from each other. A gradient tall enough to be seen turns every screenful into a different sheet of paper and makes facing pages mismatched — the one thing print readers notice first. Texture (grain) carries the paper feel instead; the gradient never does.
 5. **No CSS text effects.** `background-clip: text` renders as a solid gradient bar behind the glyphs in PDF. If a heading needs weight, use a bigger font weight.
 6. **Small radii.** `4px` on the two surviving cards; no radius anywhere else — labels are type, not chips. Large radii plus gradients is the templated look.
 7. **Dark code cards sit on dark pages.** Give them a slightly *different* dark (`#0a0d12`) and the muted syntax palette below; do not lift them with light backgrounds.
@@ -535,7 +553,7 @@ Each of these was learned by shipping the wrong version first.
 | Worked example (`.work`) | a hand-worked derivation | **open** — `2px` dim left rule, label, indented mono steps |
 | Note / tip (`.note` / `.tip`) | a called-out warning or hint | **open** — left rule in amber/green, italic serif label, no fill, no border |
 | Definition / prose (`p`) | narration and definitions | **open** — no chrome at all, just spacing |
-| Q&A (`.qa`) | question + answer | **open** — `1px` bottom hairline (already) |
+| Q&A (`.qa`) | question + answer | **open** — no rule at all; space only |
 | Table (`.data`) | tabular data | **open** — hairlines only; the header wash stays, the box does not |
 
 The open variants all share one shape: a **left hairline rule or margin indent**, an **italic serif label in sentence case**, and **space**. No fill, no border, no radius — that is what stops the page reading as a grid of boxes.
@@ -567,7 +585,7 @@ Table headers are **serif italic at 9.6pt in sentence case** on a 3.5% wash. No 
 | Callout (`note` / `tip`) | `2px` amber or green left rule, italic serif label, body indented — no fill, no border |
 | Display equation (`.eq`) | centred SVG, `margin: 7mm 0`, optional `(N)` floated right in mono faint, `page-break-inside: avoid` |
 | Complexity line | mono 7.4pt in the accent, `1px` hairline above, at the bottom of the algo/code card |
-| Q&A | no card — 4mm padding, `1px` bottom hairline, question in Poppins 9.6pt light, answer dim |
+| Q&A | no card — 4mm padding, question in Poppins 9.6pt light, answer dim; no rule between items, only the unit's opening rule separates subjects |
 | Contents | rows separated by hairlines, number in dim mono, page number floated right in the accent, sub-tag in italic serif |
 
 ---
@@ -754,7 +772,8 @@ and written by `theme.py`. The `@page` background gotcha (above) applies to it.
 
 ## Checklist before delivering
 
-- [ ] Selected guide type respected: textbook has only information/formulae/diagrams; walkthrough has explained solution steps; QA has three equivalent question wordings and one shared answer per numbered item
+- [ ] Selected guide type respected: textbook has only information/formulae/diagrams; walkthrough has explained solution steps; QA has the number of equivalent wordings the user chose (default three) and one shared answer per numbered item
+- [ ] Dividers checked: the unit head's rule is the only horizontal rule opening a block; no hairline sits between consecutive Q&A items
 - [ ] QA answers are in proper English, marking keywords highlighted, marks respected, and likely-question stars have an accurate legend and internal evidence
 - [ ] Every in-scope source diagram is included as a screenshot, with all labels readable and coverage inventory checked
 - [ ] Theme chosen in chat from the eight presets; no guide web preview or browser save gate
