@@ -493,7 +493,7 @@ Table headers are **serif italic at 9.6pt in sentence case** on a 3.5% wash. No 
 
 - **19mm top / 22mm bottom** keeps content clear of both the sheet edge and the footer. Footers need `padding-bottom: 5mm` so the page number does not crowd the trim.
 - Footers: page number on the right in mono, and nothing else unless asked.
-- **15mm sides** gives about 180mm of text width. At 7.5pt DejaVu Sans Mono a character is ~1.59mm, so plan for **≤ 105 characters per code line**. `build.py` enforces this: a code block with a longer line is an error naming the file and the length, so wrap it by hand before it reaches the PDF.
+- **15mm sides** gives about 180mm of text width. At 7.5pt DejaVu Sans Mono a character is ~1.59mm, so plan for **≤ 105 characters per code line**, and **≤ 95** for a listing nested in an `fn` block, which loses 5mm to the indent. `build.py` enforces both: a longer line is an error naming the file and the length, so wrap it by hand before it reaches the PDF.
 
 ### The `@page` background gotcha
 

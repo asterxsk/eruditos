@@ -283,9 +283,14 @@ ul.pts .keyword { color: var(--accent, #79c0ff); font-weight: 700; }
 .fn-arg-d { flex: 1 1 auto; font-size: 9.4pt; color: var(--text, #b6bfca); }
 .fn-ret { font-size: 9.8pt; color: var(--text, #b6bfca); margin-top: 3.6mm; }
 .fn-ret .fn-sub { display: block; margin: 0 0 1mm 0; }
-.fn-notes { margin-top: 3.6mm; }
+/* ul.pts sets its own margin-top (0), and (0,1,1) outranks a bare .fn-notes,
+   so the selector has to carry the list element to land at all. */
+.fn ul.pts.fn-notes { margin-top: 3.6mm; }
 .fn .code { margin-top: 3.6mm; margin-bottom: 0; }
-.fn .cx { margin-top: 3.4mm; }
+/* A complexity line inside the code card is the card's flush footer (`.code .cx`
+   zeroes its margin). This rule is for the function's own line, which sits
+   below the card and needs air. */
+.fn > .cx { margin-top: 3.4mm; }
 
 /* ------------------------------------------------------------- equations */
 .eq { text-align: center; margin: 7mm 0; page-break-inside: avoid; }

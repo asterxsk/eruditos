@@ -57,6 +57,10 @@ ALLOWED = {
 EXPECTED = {"qna": ("qa",), "code": ("code", "algo", "fn")}
 
 MAX_CODE_LINE = 105       # 7.5pt DejaVu Mono in 180mm of text column
+# A code card inside `.fn` sits behind a 5mm left rule and loses the same width
+# from its own content box, so its lines have to be shorter. Measured: 105 chars
+# overflows that card by about 40px at 7.5pt, 95 fits with room to spare.
+NESTED_CODE_LINE = 95
 QUICK_PARA_LIMIT = 420    # a quick-mode paragraph longer than this is prose
 
 
@@ -256,7 +260,13 @@ for (const j of JSON.parse(fs.readFileSync(process.argv[2], 'utf8'))) {
 """
 
 
-INLINE = re.compile(r"(`[^`]+`|\*\*.+?\*\*|\$[^$]+\$|\*[^*\n]+\*)")
+# Emphasis needs non-space on both sides of its markers. Without that, a C
+# signature like `struct task *pick_next(struct rq *q)` parses as an emphasis
+# span from the first `*` to the second, and `int **p` parses as a bold
+# keyword - both in the one field (fn.sig) that is code, not prose.
+INLINE = re.compile(
+    r"(`[^`]+`|\*\*(?!\s)[^*\n]+?(?<!\s)\*\*|\$[^$]+\$|\*(?!\s)[^*\n]+?(?<!\s)\*)"
+)
 
 # Spelling variants a content author may reasonably write. One table, used by
 # both the type checker and the renderer, so the two can never disagree about
@@ -360,15 +370,16 @@ def code_body(item: dict, base: Path) -> str:
     return path.read_text(encoding="utf-8").rstrip("\n")
 
 
-def code_card(item: dict, base: Path, math: Math, label: str | None = None) -> str:
+def code_card(item: dict, base: Path, math: Math, label: str | None = None,
+              limit: int = MAX_CODE_LINE) -> str:
     name = label or item.get("file") or item.get("title") or item.get("lang") or "listing"
     lang = item.get("lang") or ""
     body = code_body(item, base)
     lines = body.splitlines() or [""]
     longest = max((len(line) for line in lines), default=0)
-    if longest > MAX_CODE_LINE:
+    if longest > limit:
         raise SystemExit(
-            f"{name}: longest line is {longest} characters, limit is {MAX_CODE_LINE}. "
+            f"{name}: longest line is {longest} characters, limit is {limit}. "
             "Wrap it by hand before it reaches the PDF."
         )
     shown = highlight_code(body, item.get("lang"), item.get("file"))
@@ -456,10 +467,16 @@ def fn_block(val: dict, math: Math, base: Path, depth: str = "full") -> str:
     quick = depth == "quick"
 
     head = f'<div class="fn-h">{html.escape(str(name or "Function"))}</div>'
-    sig_html = f'<div class="fn-sig">{inline(sig, math)}</div>' if sig else ""
+    # A signature is code. Escape it whole: a `*` marker is a pointer here, and
+    # running it through inline() turns `int *p` into italics.
+    sig_html = f'<div class="fn-sig">{html.escape(str(sig))}</div>' if sig else ""
     does_html = f'<p class="fn-does">{inline(does, math)}</p>' if does else ""
 
     args_html = ""
+    if isinstance(args, str):
+        raise SystemExit(
+            f"fn {name!r}: 'args' must be a list, not a string - a string is "
+            "iterated character by character and renders one row per glyph")
     if args:
         rows = []
         for arg in args:
@@ -490,7 +507,10 @@ def fn_block(val: dict, math: Math, base: Path, depth: str = "full") -> str:
         spec = val.get("code") if isinstance(val.get("code"), dict) else val
         spec = dict(spec)
         spec.setdefault("title", name or "listing")
-        body_html = code_card(spec, base, math)
+        # The card must not draw its own complexity line: fn_block emits one for
+        # the whole function below the body, and the copy would print it twice.
+        spec.pop("cx", None)
+        body_html = code_card(spec, base, math, limit=NESTED_CODE_LINE)
 
     cx_html = f'<div class="cx">{inline(cx, math)}</div>' if cx else ""
     return (f'<div class="fn{" fn-quick" if quick else ""}">{head}{sig_html}{does_html}'
@@ -771,9 +791,10 @@ def main(argv=None) -> int:
     for si, sec in enumerate(sections, 1):
         for ii, item in enumerate(sec.get("items") or [], 1):
             if isinstance(item, str):
-                kind = "p"
+                kind, val = "p", item
             elif isinstance(item, dict) and len(item) == 1:
-                kind = normalise_kind(next(iter(item)))
+                raw_kind, val = next(iter(item.items()))
+                kind = normalise_kind(raw_kind)
             else:
                 problems.append(f"section {si}: malformed item {item!r}")
                 continue
@@ -783,13 +804,12 @@ def main(argv=None) -> int:
                     f"section {si} ({sec.get('title', '?')}): a '{kind}' block is not allowed in a "
                     f"{guide_type} guide. Allowed: {', '.join(sorted(allowed))}")
             if depth == "quick" and kind == "p":
-                text = item.get("p") if isinstance(item, dict) else item
-                if len(str(text)) > QUICK_PARA_LIMIT:
+                if len(str(val)) > QUICK_PARA_LIMIT:
                     warnings.append(
                         f"section {si}: a paragraph is over {QUICK_PARA_LIMIT} characters in "
                         "quick mode - quick states pointers, not prose")
-            if kind == "qa" and isinstance(item["qa"], dict):
-                qa = item["qa"]
+            if kind == "qa" and isinstance(val, dict):
+                qa = val
                 wordings = qa.get("q") or qa.get("questions") or []
                 if isinstance(wordings, str):
                     wordings = [wordings]
@@ -802,8 +822,8 @@ def main(argv=None) -> int:
                     if qa.get("star"):
                         starred += 1
                     qa_total += 1
-            if kind == "fn" and isinstance(item["fn"], dict):
-                fn_val = item["fn"]
+            if kind == "fn" and isinstance(val, dict):
+                fn_val = val
                 # Quick mode trims a function to its signature and one line, so a
                 # missing description is the real defect there, not a short one.
                 if not (fn_val.get("does") or fn_val.get("description")):
@@ -825,6 +845,10 @@ def main(argv=None) -> int:
         warnings.append(
             f"a {guide_type} guide with no {', '.join(repr(k) for k in expected)} block - "
             "is the type right?")
+    if guide_type == "code" and not counts.get("fn"):
+        warnings.append(
+            "a code guide with no 'fn' items is a listing dump - the code type "
+            "explains each function, so check that is what was wanted")
     for problem in problems:
         print(f"error: {problem}", file=sys.stderr)
     for warning in warnings:
@@ -848,11 +872,15 @@ def main(argv=None) -> int:
     figs = work / "figs"
     for sec in sections:
         for item in sec.get("items") or []:
-            if isinstance(item, dict) and "fig" in item:
-                src = item["fig"].get("file") or item["fig"].get("path")
-                if src:
-                    figs.mkdir(exist_ok=True)
-                    shutil.copyfile(base / src, figs / Path(src).name)
+            if not (isinstance(item, dict) and len(item) == 1):
+                continue
+            raw_kind, val = next(iter(item.items()))
+            if normalise_kind(raw_kind) != "fig" or not isinstance(val, dict):
+                continue
+            src = val.get("file") or val.get("path")
+            if src:
+                figs.mkdir(exist_ok=True)
+                shutil.copyfile(base / src, figs / Path(src).name)
 
     body = [cover_html(meta, math), contents_html(sections, meta, math)]
     number_items(sections)

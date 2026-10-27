@@ -200,7 +200,11 @@ implementation. In **full** mode the body is expected: the tool warns about a
 function with no listing.
 
 `code.text`, `code.file` and `code.lang` work exactly as they do for a top-level
-`code` item. `file` is resolved against the content file's directory, then
+`code` item. A nested listing's line limit is 95 characters rather than 105, because
+the fn indent narrows the card.
+
+Put the complexity line at the `fn` level, not inside `code` — a `cx` under `code` is
+dropped, since the function's own line is the one that matters. `file` is resolved against the content file's directory, then
 `<dir>/code/`.
 
 ## What the tool checks
