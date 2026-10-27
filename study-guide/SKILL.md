@@ -1,11 +1,11 @@
 ---
 name: "study-guide"
-description: "Build textbook, walkthrough, or QA PDF study guides at full or quick depth in one of eight preset themes from any subject's source material — slides, textbook chapters, lab manuals, notes. One YAML content file in, one PDF out."
+description: "Build default, Q&A, or code-explanation PDF study guides at full or quick depth in one of eight preset themes from any subject's source material — slides, textbook chapters, lab manuals, codebases, notes. One YAML content file in, one PDF out."
 ---
 
 # Study Guide
 
-Turn source material — slide decks, lab manuals, textbook chapters, past papers, messy notes — into a print-ready PDF study guide in the selected preset theme. Choose the requested guide type: textbook, walkthrough, or QA — at the requested depth, full or quick. Use one accent colour, hairline structure, and verified spacing.
+Turn source material — slide decks, lab manuals, textbook chapters, past papers, messy notes, source code — into a print-ready PDF study guide in the selected preset theme. Choose the requested guide type — **default**, **Q&A**, or **code** — at the requested depth, full or quick. Use one accent colour, hairline structure, and verified spacing.
 
 The output is a **standalone reference**: it never cites where the material came from.
 
@@ -23,10 +23,11 @@ Do not start with a layout guess and a 40-page render. Ask **as plain sentences 
 conversation**, not as a question card:
 
 - How much of the source should it cover - everything, the core topics, or an explicit list?
-- Which guide type: textbook, walkthrough, or QA?
+- Which guide type: default (information and worked examples), Q&A (an exam
+  question bank), or code (a codebase explained function by function)?
 - Full depth or quick? **Quick** covers exactly the same material but states it as
   pointers, keywords and code snippets instead of explained prose. Default to full.
-- Only for QA: how many question wordings should each item carry? **Recommend three** -
+- Only for Q&A: how many question wordings should each item carry? **Recommend three** -
   it is enough to show the question can be asked several ways without padding the
   guide out. Take any number the user gives.
 - Only when implementation code is requested: keep the source's code language, or rewrite it into one language?
@@ -41,29 +42,20 @@ much that content is explained. Apply the chosen type and depth before drafting.
 the user already specifies either, do not ask again. If they request separate guides
 of different types, the existing mandatory subagent rule applies.
 
-**1. Textbook** — information, formulae and diagrams only. Organise definitions,
-concept explanations, conditions, units, formulae and reference tables by topic.
-Include all in-scope source diagram screenshots. Do not add worked sums, solved
-examples, question-and-answer banks or implementation code to this type.
+**1. Default** — the general guide: information, formulae, diagrams and worked
+examples. Organise definitions, concept explanations, conditions, units, formulae,
+reference tables and solved problems by topic. Explanations may include code and
+algorithms when the source does. This is the type to pick when the request does not
+name one.
 
-**2. Walkthrough** — worked sums, equations, derivatives and derivations. For each
-problem, show the given information, what must be found, the relevant formula or
-method, substitutions, each meaningful algebra/calculus step, and the final result
-with units or conditions where appropriate. Explain why the method or step applies;
-do not jump from the problem to the answer. In **quick** mode the same chain is
-written one line per step and the method is named rather than explained.
-Respect calculator use for arithmetic.
-Keep source notation and include the relevant source diagram screenshots. Restrict
-theory to what is needed to understand and solve the requested problems.
-
-**3. QA** — an exam question bank. Each numbered item contains **two or more ways of
+**2. Q&A** — an exam question bank. Each numbered item contains **two or more ways of
 asking the same question**, followed by **one shared model answer**. The default and
 recommended count is **three**; ask in Step 0 and use whatever the user asks for.
 The wordings must test the same knowledge, have equivalent scope and depth,
 and be fully answered by that one answer. They are not different questions,
 subparts, or separately answered prompts. Keep meaningful wording variation.
 
-Use this vertical layout for every QA item:
+Use this vertical layout for every Q&A item:
 
 ```text
 1 [star only if exam-likely]
@@ -87,7 +79,7 @@ is a keyword chain plus a short pointer list, covering every mark the full answe
 would earn. Match the user's marks and
 exam format; do not assume a mark allocation that was not supplied.
 
-**QA for a code lab.** When the source is a lab manual of programs rather than an
+**Q&A for a code lab.** When the source is a lab manual of programs rather than an
 exam paper, the question is a one-line statement of the task and the answer is the
 program plus its console output — not a prose answer. Keep the number, the single
 question sentence, then the code card and the output card beneath it. Do not print
@@ -100,12 +92,27 @@ source, and keep that evidence in the internal coverage record. If likelihood is
 inferred without past-paper evidence, label the star legend as an **estimated
 revision priority**, not a confirmed prediction. Do not star everything by default.
 Include source diagram screenshots needed by the question or answer; the diagram
-requirement applies to QA too.
+requirement applies here too.
+
+**3. Code** — a codebase explained. One `fn` item per function: its name, its
+signature, what it does in one or two sentences, every parameter with its type and
+meaning, what it returns, and the traps worth knowing. Then the body listing, then
+the complexity line. Organise by module or file, in source order, so the guide reads
+like the program.
+
+`fn` is the type's unit of content, and it is not optional — a code guide with no
+`fn` items is a listing dump and the tool warns about it. Cover every function in
+scope, including the small ones; a guide that skips the helpers is the one that
+leaves a gap on the exam. Algorithms the source states as numbered steps belong in
+`algo`, and a file whose functions are all one-liners can be a single `code` item
+with a short paragraph each.
+
+The code itself still has to compile and run. Explanations are what this type adds,
+never a substitute for a working listing.
 
 The algorithm, code and complexity conventions later in this skill apply only to
 blocks appropriate to the chosen type and requested scope. They do not require
-adding code, algorithms, or complexity to a textbook, mathematical walkthrough,
-or theory QA guide.
+adding code, algorithms, or complexity to a default guide or a theory Q&A guide.
 
 ### Depth: full or quick
 
@@ -123,6 +130,7 @@ Write it the way the reader's own notes would look the night before an exam.
 | Walkthrough | every meaningful step, with why the method applies | given → formula → substitution → result, one line naming the method |
 | QA answer | full model answer in prose | keyword chain plus a short pointer list; every mark still covered |
 | Code | complete program, compiled and run | the snippet that answers the question; a complete program still compiles and runs |
+| Function | signature, description, parameters, returns, body, notes | signature, one-line description, parameters, returns — no body, no notes |
 | Diagrams | screenshot, cropped and captioned | same — a diagram is source content, not explanation |
 
 **What does not relax in quick mode:**
@@ -142,10 +150,10 @@ Write it the way the reader's own notes would look the night before an exam.
 - `note` / `tip` become a single pointer sentence, and only when they carry a real
   warning or a trap that costs marks. Do not convert prose into bullets just to
   fill them.
-- A walkthrough states the method instead of arguing for it.
+- A worked example states the method instead of arguing for it.
 
-Quick does not smuggle in content the type forbids: a quick textbook still has no
-worked examples and no code. Depth subtracts; it never adds.
+Quick does not smuggle in content the type forbids: a quick Q&A guide still has no
+code listings. Depth subtracts; it never adds.
 
 Quick is **shorter, not sparser** — the same rules fill a page to about 72%. Pointer
 lists and code snippets flow and split freely, so there is no reason for a quick
@@ -266,7 +274,7 @@ Read the dumps before writing anything. The algorithms usually exist **verbatim*
 **One YAML file. Do not write Python.** The build is a tool now:
 
 ```bash
-python build.py guide.yaml --theme <preset> --type <textbook|walkthrough|qa> --depth <full|quick>
+python build.py guide.yaml --theme <preset> --type <default|qna|code> --depth <full|quick>
 ```
 
 It owns the theme assets, every block renderer, the maths, the contents page, the
@@ -303,7 +311,7 @@ sections:
 ```
 
 Block keys: `p`, `h2`, `h3`, `pts`, `math`, `algo`, `code`, `work`, `fig`, `table`,
-`note`, `tip`, `qa`. Prose strings accept `**keyword**`, `` `code` ``, `*emphasis*`
+`note`, `tip`, `qa`, `fn`. Prose strings accept `**keyword**`, `` `code` ``, `*emphasis*`
 and `$inline math$`.
 
 Only choose blocks the guide type allows — the tool rejects the rest before
@@ -311,9 +319,12 @@ rendering, so a mistake costs a second, not a render:
 
 | Type | Blocks allowed |
 |---|---|
-| `textbook` | `p pts h2 h3 math fig table note tip algo` |
-| `walkthrough` | the above plus `work code` |
-| `qa` | `p pts h2 h3 math fig table note tip qa` |
+| `default` | `p pts h2 h3 math fig table note tip algo work code fn` |
+| `qna` | `p pts h2 h3 math fig table note tip qa` |
+| `code` | `p pts h2 h3 math fig table note tip algo code fn` |
+
+The older names still parse — `textbook` and `walkthrough` both resolve to
+`default`, `qa` to `qna` — so an existing content file keeps building.
 
 `pts` is the quick-mode pointer list: one pointer per line, each opening with the
 term being pointed at. It renders as a hanging-indent list with a short accent dash,
@@ -650,7 +661,7 @@ and written by `theme.py`. The `@page` background gotcha (above) applies to it.
 ## Checklist before delivering
 
 - [ ] Selected depth respected: quick covers every in-scope topic and loses no marks-bearing fact, but carries pointers/snippets instead of explained prose; full is unchanged
-- [ ] Selected guide type respected: textbook has only information/formulae/diagrams; walkthrough has explained solution steps; QA has the number of equivalent wordings the user chose (default three) and one shared answer per numbered item
+- [ ] Selected guide type respected: default carries information and explained worked examples; Q&A has the number of equivalent wordings the user chose (default three) and one shared answer per numbered item; code explains every in-scope function with its parameters and return value
 - [ ] Dividers checked: the unit head's rule is the only horizontal rule opening a block; no hairline sits between consecutive Q&A items
 - [ ] QA answers are in proper English, marking keywords highlighted, marks respected, and likely-question stars have an accurate legend and internal evidence
 - [ ] Every in-scope source diagram is included as a screenshot, with all labels readable and coverage inventory checked

@@ -29,19 +29,32 @@ sys.path.insert(0, str(PICKER))
 import theme as themes  # noqa: E402  (needs PICKER on sys.path)
 
 THEMES = ("dark", "graphite", "cobalt", "obsidian", "paper", "sepia", "ice", "mono")
-TYPES = ("textbook", "walkthrough", "qa")
+TYPES = ("default", "qna", "code")
 DEPTHS = ("full", "quick")
 
-# Blocks each guide type is allowed to carry. A textbook is information only;
-# a walkthrough is solved problems; a QA guide is questions with answers.
-ALLOWED = {
-    "textbook": {"h2", "h3", "p", "pts", "math", "fig", "table", "note", "tip", "algo"},
-    "walkthrough": {"h2", "h3", "p", "pts", "math", "fig", "table", "note", "tip",
-                    "algo", "work", "code"},
-    "qa": {"h2", "h3", "p", "pts", "math", "fig", "table", "note", "tip", "qa"},
+# The three guide types. The old names still parse so an existing content file
+# does not break, but they normalise to one of these before anything renders.
+ALIASES = {
+    "textbook": "default",
+    "walkthrough": "default",
+    "qa": "qna",
+    "q&a": "qna",
+    "questions": "qna",
 }
-# Blocks whose absence means the guide is not really that type.
-EXPECTED = {"qa": "qa", "walkthrough": "work"}
+
+# Blocks each type may carry. `default` is the general guide and takes
+# everything except the question bank. `qna` is the question bank, nothing else.
+# `code` is a listing explained function by function, so `fn` is expected there
+# rather than merely allowed.
+ALLOWED = {
+    "default": {"h2", "h3", "p", "pts", "math", "fig", "table", "note", "tip",
+                "algo", "work", "code", "fn"},
+    "qna": {"h2", "h3", "p", "pts", "math", "fig", "table", "note", "tip", "qa"},
+    "code": {"h2", "h3", "p", "pts", "math", "fig", "table", "note", "tip",
+             "algo", "code", "fn"},
+}
+# A guide of this type with none of these blocks is probably mislabelled.
+EXPECTED = {"qna": ("qa",), "code": ("code", "algo", "fn")}
 
 MAX_CODE_LINE = 105       # 7.5pt DejaVu Mono in 180mm of text column
 QUICK_PARA_LIMIT = 420    # a quick-mode paragraph longer than this is prose
@@ -245,6 +258,26 @@ for (const j of JSON.parse(fs.readFileSync(process.argv[2], 'utf8'))) {
 
 INLINE = re.compile(r"(`[^`]+`|\*\*.+?\*\*|\$[^$]+\$|\*[^*\n]+\*)")
 
+# Spelling variants a content author may reasonably write. One table, used by
+# both the type checker and the renderer, so the two can never disagree about
+# what a block is called.
+KIND_ALIASES = {
+    "para": "p",
+    "point": "pts",
+    "points": "pts",
+    "function": "fn",
+    "explain": "fn",
+    "algorithms": "algo",
+    "figures": "fig",
+    "qna": "qa",
+    "question": "qa",
+    "answer": "qa",
+}
+
+
+def normalise_kind(kind: str) -> str:
+    return KIND_ALIASES.get(kind, kind)
+
 
 def inline(text: str, math: Math) -> str:
     """Escape, then apply the four inline forms the content file may use."""
@@ -400,16 +433,81 @@ def algo_card(item: dict, math: Math) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# function explanations (the code guide)
+# --------------------------------------------------------------------------- #
+def fn_block(val: dict, math: Math, base: Path, depth: str = "full") -> str:
+    """One function, explained: signature, what it does, arguments, result.
+
+    Open block, not a card: a left rule and space, matching `.work`. The only
+    fenced thing in it is the body listing, because that is real code.
+
+    Quick mode keeps the signature, the one-line description, the parameters
+    and the return value, and drops the body listing and the notes. That is the
+    whole point of quick here: the reader already knows what the body looks like
+    and wants the interface.
+    """
+    name = val.get("name") or ""
+    sig = val.get("sig") or val.get("signature") or ""
+    does = val.get("does") or val.get("description") or ""
+    args = val.get("args") or val.get("params") or []
+    returns = val.get("returns") or val.get("result") or ""
+    notes = val.get("notes") or []
+    cx = val.get("cx")
+    quick = depth == "quick"
+
+    head = f'<div class="fn-h">{html.escape(str(name or "Function"))}</div>'
+    sig_html = f'<div class="fn-sig">{inline(sig, math)}</div>' if sig else ""
+    does_html = f'<p class="fn-does">{inline(does, math)}</p>' if does else ""
+
+    args_html = ""
+    if args:
+        rows = []
+        for arg in args:
+            if isinstance(arg, dict):
+                aname = arg.get("name") or ""
+                atype = arg.get("type")
+                adesc = arg.get("desc") or arg.get("description") or ""
+                label = html.escape(str(aname))
+                if atype:
+                    label += f' <span class="fn-type">{html.escape(str(atype))}</span>'
+                rows.append(f'<div class="fn-arg"><span class="fn-arg-n">{label}</span>'
+                            f'<span class="fn-arg-d">{inline(adesc, math)}</span></div>')
+            else:
+                rows.append(f'<div class="fn-arg"><span class="fn-arg-d">{inline(arg, math)}</span></div>')
+        args_html = ('<div class="fn-sub">Parameters</div>'
+                     f'<div class="fn-args">{"".join(rows)}</div>')
+    ret_html = (f'<div class="fn-ret"><span class="fn-sub">Returns</span> '
+                f'{inline(returns, math)}</div>' if returns else "")
+    notes_html = ""
+    if notes and not quick:
+        if isinstance(notes, str):
+            notes = [notes]
+        notes_html = ('<ul class="pts fn-notes">'
+                      + "".join(f"<li>{inline(n, math)}</li>" for n in notes) + "</ul>")
+
+    body_html = ""
+    if not quick and (val.get("code") or val.get("file") or val.get("text")):
+        spec = val.get("code") if isinstance(val.get("code"), dict) else val
+        spec = dict(spec)
+        spec.setdefault("title", name or "listing")
+        body_html = code_card(spec, base, math)
+
+    cx_html = f'<div class="cx">{inline(cx, math)}</div>' if cx else ""
+    return (f'<div class="fn{" fn-quick" if quick else ""}">{head}{sig_html}{does_html}'
+            f'{args_html}{ret_html}{notes_html}{body_html}{cx_html}</div>')
+
+
+# --------------------------------------------------------------------------- #
 # blocks
 # --------------------------------------------------------------------------- #
-def render_block(item, math: Math, base: Path) -> tuple[str, str]:
+def render_block(item, math: Math, base: Path, depth: str = "full") -> tuple[str, str]:
     """Return (block_name, html) for one content item."""
     if isinstance(item, str):
         return "p", f"<p>{inline(item, math)}</p>"
     if not isinstance(item, dict) or len(item) != 1:
         raise SystemExit(f"content item must be a single-key mapping, got: {item!r}")
     kind, val = next(iter(item.items()))
-    kind = {"para": "p", "point": "pts", "points": "pts", "algo": "algo"}.get(kind, kind)
+    kind = normalise_kind(kind)
 
     if kind == "p":
         return kind, f"<p>{inline(val, math)}</p>"
@@ -430,6 +528,8 @@ def render_block(item, math: Math, base: Path) -> tuple[str, str]:
         return kind, f'<div class="eq">{math.placeholder(tex, display=True)}{num_html}</div>'
     if kind == "algo":
         return kind, algo_card(val, math)
+    if kind == "fn":
+        return kind, fn_block(val, math, base, depth)
     if kind == "code":
         return kind, code_card(val, base, math)
     if kind == "work":
@@ -564,14 +664,14 @@ def contents_html(sections: list[dict], meta: dict, math: Math) -> str:
             f'</div>\n{"".join(rows)}\n</section>')
 
 
-def unit_html(sec: dict, i: int, math: Math, base: Path) -> str:
+def unit_html(sec: dict, i: int, math: Math, base: Path, depth: str = "full") -> str:
     num = str(sec.get("num") or f"{i:02d}")
     tag = sec.get("tag") or ""
     title = sec.get("title") or ""
     blurb = sec.get("blurb") or ""
     parts = []
     for item in sec.get("items") or []:
-        parts.append(render_block(item, math, base)[1])
+        parts.append(render_block(item, math, base, depth)[1])
     blurb_html = f'<p class="blurb">{inline(blurb, math)}</p>' if blurb else ""
     tag_html = f'<span class="unit-tag">{html.escape(str(tag))}</span>' if tag else ""
     return (f'<section class="unit" id="u{html.escape(num)}">\n<div class="unit-head">'
@@ -588,9 +688,12 @@ def number_items(sections: list[dict]) -> None:
     n = 1
     for sec in sections:
         for item in sec.get("items") or []:
-            if not (isinstance(item, dict) and len(item) == 1 and "qa" in item):
+            if not (isinstance(item, dict) and len(item) == 1):
                 continue
-            qa = item["qa"]
+            key = normalise_kind(next(iter(item)))
+            if key != "qa":
+                continue
+            qa = item[next(iter(item))]
             if not isinstance(qa, dict):
                 continue
             if qa.get("num") in (None, ""):
@@ -612,7 +715,8 @@ def main(argv=None) -> int:
     parser.add_argument("content", type=Path, nargs="?",
                         help="content file (.yaml, .yml or .json)")
     parser.add_argument("--theme", choices=THEMES, help="preset theme")
-    parser.add_argument("--type", dest="guide_type", choices=TYPES, help="textbook | walkthrough | qa")
+    parser.add_argument("--type", dest="guide_type", choices=TYPES + tuple(ALIASES),
+                        help="default | qna | code")
     parser.add_argument("--depth", choices=DEPTHS, help="full | quick")
     parser.add_argument("-o", "--out", type=Path, help="output PDF (default: <content>.pdf)")
     parser.add_argument("--work", type=Path, help="build directory (default: <out>.build)")
@@ -646,8 +750,10 @@ def main(argv=None) -> int:
     meta = content.get("meta") or {}
 
     theme_name = setting(content, args.theme, "theme", "dark")
-    guide_type = setting(content, args.guide_type, "type", "textbook")
+    guide_type = setting(content, args.guide_type, "type", "default")
     depth = setting(content, args.depth, "depth", "full")
+    guide_type = ALIASES.get(str(guide_type).lower(), str(guide_type).lower())
+    depth = str(depth).lower()
     for name, value, allowed in (("theme", theme_name, THEMES), ("type", guide_type, TYPES),
                                  ("depth", depth, DEPTHS)):
         if value not in allowed:
@@ -667,7 +773,7 @@ def main(argv=None) -> int:
             if isinstance(item, str):
                 kind = "p"
             elif isinstance(item, dict) and len(item) == 1:
-                kind = next(iter(item))
+                kind = normalise_kind(next(iter(item)))
             else:
                 problems.append(f"section {si}: malformed item {item!r}")
                 continue
@@ -696,13 +802,29 @@ def main(argv=None) -> int:
                     if qa.get("star"):
                         starred += 1
                     qa_total += 1
+            if kind == "fn" and isinstance(item["fn"], dict):
+                fn_val = item["fn"]
+                # Quick mode trims a function to its signature and one line, so a
+                # missing description is the real defect there, not a short one.
+                if not (fn_val.get("does") or fn_val.get("description")):
+                    warnings.append(
+                        f"section {si}, item {ii}: function "
+                        f"{fn_val.get('name') or '?'!r} has no description - the code guide "
+                        "explains each function, not just lists it")
+                if depth != "quick" and not (
+                        fn_val.get("code") or fn_val.get("file") or fn_val.get("text")):
+                    warnings.append(
+                        f"section {si}, item {ii}: function "
+                        f"{fn_val.get('name') or '?'!r} has no body listing (full depth)")
     if qa_total and starred > max(2, qa_total // 3):
         warnings.append(
             f"{starred} of {qa_total} QA items are starred - a star means exam-likely, "
             "so starring most items says nothing")
     expected = EXPECTED.get(guide_type)
-    if expected and not counts.get(expected):
-        warnings.append(f"a {guide_type} guide with no '{expected}' blocks - is the type right?")
+    if expected and not any(counts.get(k) for k in expected):
+        warnings.append(
+            f"a {guide_type} guide with no {', '.join(repr(k) for k in expected)} block - "
+            "is the type right?")
     for problem in problems:
         print(f"error: {problem}", file=sys.stderr)
     for warning in warnings:
@@ -734,7 +856,7 @@ def main(argv=None) -> int:
 
     body = [cover_html(meta, math), contents_html(sections, meta, math)]
     number_items(sections)
-    body += [unit_html(sec, i, math, base) for i, sec in enumerate(sections, 1)]
+    body += [unit_html(sec, i, math, base, depth) for i, sec in enumerate(sections, 1)]
     if content.get("closing"):
         body.append(f'<div class="end"><p>{inline(content["closing"], math)}</p></div>')
 
@@ -927,10 +1049,11 @@ def run_checks(pdf: Path) -> bool:
 
 
 EXAMPLE = r"""# One YAML file is the whole input. Everything else is the tool's job.
-#   python build.py guide.yaml --theme cobalt --type qa --depth quick
+#   python build.py guide.yaml --theme cobalt --type code --depth quick
 #
 # meta, theme, type and depth can live here or arrive as CLI flags.
-
+#   type:  default | qna | code
+#   depth: full | quick
 
 meta:
   title: Operating Systems
@@ -943,8 +1066,8 @@ meta:
       note: the long version
 
 theme: cobalt
-type: qa
-depth: quick
+type: code
+depth: full
 
 sections:
   - tag: SCHEDULING
@@ -958,28 +1081,38 @@ sections:
       - math:
           tex: W = \frac{1}{n} \sum_{i=1}^{n} w_i
           num: 1
-      - qa:
-          num: 1
-          star: true
-          q:
-            - Why does round robin keep the ready queue fair?
-            - Explain how round robin guarantees every process a turn.
-            - What property of round robin prevents starvation?
-          a: >
-            Every ready process is served in **FIFO order** with a bounded
-            **time quantum**, so the longest wait is the number of ready
-            processes times the quantum.
-          kw: [FIFO order, time quantum, starvation]
+      - fn:
+          name: pick_next
+          sig: "struct task *pick_next(struct rq *q)"
+          does: >
+            Returns the next task to run on this CPU, or NULL when the runqueue
+            is empty. Round robin, so it always takes the head of the queue.
+          args:
+            - {name: q, type: "struct rq *", desc: The runqueue for this CPU. Never NULL.}
+          returns: >
+            The task at the head of the queue, already dequeued and marked
+            running, or NULL if there was nothing to run.
+          notes:
+            - The caller must hold `q->lock`; this function does not take it.
+          cx: O(1) time · O(1) extra space
+          code:
+            text: |
+              struct task *pick_next(struct rq *q) {
+                  struct task *t = q->head;
+                  if (t) q->head = t->next;
+                  return t;
+              }
+            lang: c
 
   - tag: SYSCALLS
     title: System Calls
     blurb: The boundary between user code and the kernel.
     items:
-      - qa:
-          num: 2
-          q: Write a program that forks and prints from both processes.
-          code:
-            text: |
+      - code:
+          title: fork_demo.c
+          lang: c
+          cx: "Time complexity · O(1) system call"
+          text: |
               #include <stdio.h>
               #include <unistd.h>
 
@@ -989,8 +1122,6 @@ sections:
                   else printf("parent %d", pid);
                   return 0;
               }
-            lang: c
-            title: fork_demo.c
 """
 
 if __name__ == "__main__":

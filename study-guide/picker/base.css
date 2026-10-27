@@ -240,6 +240,53 @@ ul.pts li::before {
 }
 ul.pts .keyword { color: var(--accent, #79c0ff); font-weight: 700; }
 
+/* ------------------------------------------------- function explanations */
+/* The code guide's unit of content: one function, explained. Open like .work —
+   a dim left rule and space, no box — because the explanation is prose. The
+   only fenced thing inside is the body listing, and that is a .code card, which
+   already says "this is a program" by looking like one. */
+.fn {
+  margin: 0 0 calc(7mm * var(--rhythm, 1.15)) 0; padding: 0 0 0 5mm;
+  border-left: 2px solid var(--dim-soft, rgba(150,160,175,0.40));
+  page-break-inside: auto;              /* a long function can flow, a short one stays */
+}
+.fn-h {
+  font-family: var(--font-heading); font-weight: 600; font-size: 11.4pt;
+  color: var(--strong, #dfe5ec); page-break-after: avoid;
+}
+/* The signature is code, so it is set in the code face — but at body size, not
+   the 7.5pt of a listing, because it is being read as a sentence about the
+   function rather than copied. */
+.fn-sig {
+  font-family: var(--font-code); font-size: 8.4pt; line-height: 1.5;
+  color: var(--accent, #79c0ff); margin-top: 1.6mm;
+  white-space: pre-wrap; page-break-inside: avoid; page-break-after: avoid;
+}
+.fn-does { margin: 2.6mm 0 0 0; font-size: 9.8pt; color: var(--text, #b6bfca); }
+.fn-sub {
+  font-family: var(--font-label, var(--font-heading)); font-style: italic;
+  font-size: var(--label-size); color: var(--dim, #8f98a6);
+  margin: 3.6mm 0 1.4mm 0; page-break-after: avoid;
+}
+/* Hanging label/value rows: the name column is fixed so the descriptions line
+   up down the block, which is what makes a parameter list scannable. */
+.fn-args { page-break-inside: avoid; }
+.fn-arg { display: flex; gap: 3mm; margin: 0 0 1.4mm 0; page-break-inside: avoid; }
+.fn-arg-n {
+  flex: 0 0 34mm; font-family: var(--font-code); font-size: 8pt;
+  color: var(--dim, #a8b2be); white-space: normal;
+}
+.fn-type {
+  font-family: var(--font-code); font-size: 7.2pt; color: var(--faint, #5d6672);
+  margin-left: 1.4mm;
+}
+.fn-arg-d { flex: 1 1 auto; font-size: 9.4pt; color: var(--text, #b6bfca); }
+.fn-ret { font-size: 9.8pt; color: var(--text, #b6bfca); margin-top: 3.6mm; }
+.fn-ret .fn-sub { display: block; margin: 0 0 1mm 0; }
+.fn-notes { margin-top: 3.6mm; }
+.fn .code { margin-top: 3.6mm; margin-bottom: 0; }
+.fn .cx { margin-top: 3.4mm; }
+
 /* ------------------------------------------------------------- equations */
 .eq { text-align: center; margin: 7mm 0; page-break-inside: avoid; }
 .eq svg, .eq img { vertical-align: middle; }

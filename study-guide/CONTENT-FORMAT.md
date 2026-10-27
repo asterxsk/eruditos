@@ -5,13 +5,12 @@ and, optionally, the choices; everything else — theme assets, block rendering,
 maths, contents page, PDF, delivery checks — the tool owns.
 
 ```bash
-python build.py guide.yaml --theme cobalt --type qa --depth quick
+python build.py guide.yaml --theme cobalt --type qna --depth quick
 python build.py guide.yaml                 # theme/type/depth read from the file
 python build.py --example guide.yaml     # write a working sample to edit
 ```
 
-Flags win over the file; the file wins over the defaults (`dark`, `textbook`,
-`full`). Output is `<content-stem>.pdf` next to the content file unless `-o`
+Flags win over the file; the file wins over the defaults (`dark`, `default`, `full`). Output is `<content-stem>.pdf` next to the content file unless `-o`
 is given.
 
 ## Top level
@@ -28,7 +27,7 @@ meta:
   contents_blurb: ...               # optional line under the contents heading
 
 theme: cobalt                       # dark graphite cobalt obsidian paper sepia ice mono
-type: qa                            # textbook | walkthrough | qa
+type: qna                           # default | qna | code
 depth: quick                        # full | quick
 
 closing: Built from the lecture slides.   # optional closing line
@@ -63,6 +62,7 @@ Every item is a single-key mapping. A bare string is shorthand for `p:`.
 | `note` | `{title, text}` | amber callout |
 | `tip` | `{title, text}` | green callout |
 | `qa` | see below | one numbered question item |
+| `fn` | see below | one function, explained (code guide) |
 
 `h2`, `h3` take a plain string. `text` in `note`/`tip` and every string inside
 `pts`/`work` accepts the inline forms below.
@@ -158,12 +158,50 @@ The tool rejects a block the chosen type does not carry, before rendering:
 
 | Type | Sections may contain |
 |---|---|
-| `textbook` | `p pts h2 h3 math fig table note tip algo` |
-| `walkthrough` | the above plus `work code` |
-| `qa` | `p pts h2 h3 math fig table note tip qa` |
+| `default` | `p pts h2 h3 math fig table note tip algo work code fn` |
+| `qna` | `p pts h2 h3 math fig table note tip qa` |
+| `code` | `p pts h2 h3 math fig table note tip algo code fn` |
+
+`textbook` and `walkthrough` are accepted as aliases for `default`, and `qa` for
+`qna`, so older content files keep building.
 
 Pass `--lax` to downgrade those to warnings. Depth is not enforced the same
 way — a long paragraph in quick mode is reported, not rejected.
+
+### `fn` — the code guide's unit
+
+```yaml
+- fn:
+    name: sort_ints
+    sig: "void sort_ints(int *a, size_t n)"
+    does: >
+      Sorts n integers in place, ascending, using an iterative merge sort so the
+      stack depth stays constant.
+    args:
+      - {name: a, type: "int *", desc: The array to sort, holding at least `n` elements.}
+      - {name: n, type: size_t, desc: Element count; 0 and 1 return immediately.}
+    returns: Nothing. The array is sorted in place.
+    notes:
+      - Stable, so equal keys keep their original order.
+    cx: "Time complexity · O(n log n) all cases · O(n) extra space"
+    code:
+      text: |
+        void sort_ints(int *a, size_t n) { ... }
+      lang: c
+```
+
+`name` and `does` are the two that matter everywhere; `sig`, `args`, `returns`,
+`notes`, `cx` and `code` fill in around them. An argument can be a bare string
+when it needs no type column.
+
+In **quick** mode `fn` keeps the signature, the description, the parameters and the
+return value, and drops the body listing and the notes — the interface without the
+implementation. In **full** mode the body is expected: the tool warns about a
+function with no listing.
+
+`code.text`, `code.file` and `code.lang` work exactly as they do for a top-level
+`code` item. `file` is resolved against the content file's directory, then
+`<dir>/code/`.
 
 ## What the tool checks
 
