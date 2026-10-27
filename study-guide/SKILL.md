@@ -13,7 +13,7 @@ The output is a **standalone reference**: it never cites where the material came
 `build.py` turns that into the PDF in about two seconds: theme assets, block
 rendering, maths, contents page, render and delivery checks. Do not write Python per
 guide; the tool already exists. Its schema is `CONTENT-FORMAT.md` and a working
-sample is `python build.py --example`.
+sample is `python build.py --example guide.yaml`.
 
 ---
 
@@ -271,7 +271,7 @@ python build.py guide.yaml --theme <preset> --type <textbook|walkthrough|qa> --d
 
 It owns the theme assets, every block renderer, the maths, the contents page, the
 PDF and the delivery checks. A guide takes seconds, not a scripting session. The
-full schema is in `CONTENT-FORMAT.md` beside it; `python build.py --example` prints
+full schema is in `CONTENT-FORMAT.md` beside it; `python build.py --example guide.yaml` writes
 a working file to edit.
 
 Content goes in one section per subject area — a short tag, a title, a one-line

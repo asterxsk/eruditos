@@ -44,7 +44,7 @@ A standalone reference builder. The agent harvests the source material (`.pptx`,
 python study-guide/build.py guide.yaml --theme cobalt --type qa --depth quick
 ```
 
-That is the whole build. `build.py` owns the theme assets, every block renderer, LaTeX-to-SVG maths, the contents page, the WeasyPrint render and the delivery checks — a guide takes about two seconds, and nothing is scripted per guide. `CONTENT-FORMAT.md` documents the schema; `build.py --example` prints a working file. Three guide types:
+That is the whole build. `build.py` owns the theme assets, every block renderer, LaTeX-to-SVG maths, the contents page, the WeasyPrint render and the delivery checks — a guide takes about two seconds, and nothing is scripted per guide. `CONTENT-FORMAT.md` documents the schema; `build.py --example guide.yaml` writes one. Three guide types:
 
 - **Textbook** — definitions, formulae, and diagrams, organised by topic.
 - **Walkthrough** — worked sums and derivations, every step explained.

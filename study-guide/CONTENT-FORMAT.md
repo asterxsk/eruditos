@@ -7,7 +7,7 @@ maths, contents page, PDF, delivery checks — the tool owns.
 ```bash
 python build.py guide.yaml --theme cobalt --type qa --depth quick
 python build.py guide.yaml                 # theme/type/depth read from the file
-python build.py --example > guide.yaml     # a working sample to edit
+python build.py --example guide.yaml     # write a working sample to edit
 ```
 
 Flags win over the file; the file wins over the defaults (`dark`, `textbook`,

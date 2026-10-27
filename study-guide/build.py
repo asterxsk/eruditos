@@ -621,11 +621,19 @@ def main(argv=None) -> int:
     parser.add_argument("--no-check", action="store_true",
                         help="skip the delivery checks (they run by default)")
     parser.add_argument("--lax", action="store_true", help="downgrade type-rule violations to warnings")
-    parser.add_argument("--example", action="store_true", help="print a sample content file and exit")
+    parser.add_argument("--example", nargs="?", const="-", metavar="PATH",
+                        help="write a sample content file to PATH (or stdout) and exit")
     args = parser.parse_args(argv)
 
     if args.example:
-        print(EXAMPLE)
+        if args.example == "-":
+            # stdout is cp1252 on a redirected Windows shell, which mangles the
+            # middle dots and dashes in the sample; write UTF-8 bytes instead.
+            sys.stdout.buffer.write(EXAMPLE.encode("utf-8"))
+            sys.stdout.buffer.flush()
+        else:
+            Path(args.example).write_text(EXAMPLE, encoding="utf-8")
+            print(f"wrote {args.example}")
         return 0
     if not args.content:
         parser.error("a content file is required (or use --example)")
@@ -970,18 +978,19 @@ sections:
       - qa:
           num: 2
           q: Write a program that forks and prints from both processes.
-          file: fork_demo.c
-          lang: c
-      - qa:
-          num: 3
-          q: State the steps fork() takes inside the kernel.
-          algo:
-            pin: Fork
-            title: Creating a process
-            steps:
-              - Call fork(); the kernel copies the address space.
-              - Check the return value, 0 in the child, child PID in the parent.
-            cx: O(1) system call · O(n) copy on write
+          code:
+            text: |
+              #include <stdio.h>
+              #include <unistd.h>
+
+              int main(void) {
+                  pid_t pid = fork();
+                  if (pid == 0) printf("child");
+                  else printf("parent %d", pid);
+                  return 0;
+              }
+            lang: c
+            title: fork_demo.c
 """
 
 if __name__ == "__main__":
