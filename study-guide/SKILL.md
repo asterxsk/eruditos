@@ -1,11 +1,11 @@
 ---
 name: "study-guide"
-description: "Build textbook, walkthrough, or QA PDF study guides in one of eight preset themes from any subject's source material — slides, textbook chapters, lab manuals, notes."
+description: "Build textbook, walkthrough, or QA PDF study guides at full or quick depth in one of eight preset themes from any subject's source material — slides, textbook chapters, lab manuals, notes."
 ---
 
 # Study Guide
 
-Turn source material — slide decks, lab manuals, textbook chapters, past papers, messy notes — into a print-ready PDF study guide in the selected preset theme. Choose the requested guide type: textbook, walkthrough, or QA. Use one accent colour, hairline structure, and verified spacing.
+Turn source material — slide decks, lab manuals, textbook chapters, past papers, messy notes — into a print-ready PDF study guide in the selected preset theme. Choose the requested guide type: textbook, walkthrough, or QA — at the requested depth, full or quick. Use one accent colour, hairline structure, and verified spacing.
 
 The output is a **standalone reference**: it never cites where the material came from.
 
@@ -18,6 +18,8 @@ conversation**, not as a question card:
 
 - How much of the source should it cover - everything, the core topics, or an explicit list?
 - Which guide type: textbook, walkthrough, or QA?
+- Full depth or quick? **Quick** covers exactly the same material but states it as
+  pointers, keywords and code snippets instead of explained prose. Default to full.
 - Only for QA: how many question wordings should each item carry? **Recommend three** -
   it is enough to show the question can be asked several ways without padding the
   guide out. Take any number the user gives.
@@ -28,9 +30,10 @@ Only skip a question the request already pins down; state the default you took a
 
 ### Guide types
 
-Guide type controls the content; theme controls its appearance. Apply the chosen type
-before drafting. If the user already specifies it, do not ask again. If they request
-separate guides of different types, the existing mandatory subagent rule applies.
+Guide type controls the content; theme controls its appearance; depth controls how
+much that content is explained. Apply the chosen type and depth before drafting. If
+the user already specifies either, do not ask again. If they request separate guides
+of different types, the existing mandatory subagent rule applies.
 
 **1. Textbook** — information, formulae and diagrams only. Organise definitions,
 concept explanations, conditions, units, formulae and reference tables by topic.
@@ -41,7 +44,9 @@ examples, question-and-answer banks or implementation code to this type.
 problem, show the given information, what must be found, the relevant formula or
 method, substitutions, each meaningful algebra/calculus step, and the final result
 with units or conditions where appropriate. Explain why the method or step applies;
-do not jump from the problem to the answer. Respect calculator use for arithmetic.
+do not jump from the problem to the answer. In **quick** mode the same chain is
+written one line per step and the method is named rather than explained.
+Respect calculator use for arithmetic.
 Keep source notation and include the relevant source diagram screenshots. Restrict
 theory to what is needed to understand and solve the requested problems.
 
@@ -71,7 +76,9 @@ of question variants. Keep each Q line separate, followed by the single Ans
 block. Write the answer in proper English: complete, grammatically correct sentences,
 with the expected technical terminology. Use coherent paragraphs or numbered steps
 when appropriate to the answer. Highlight the marking keywords with bold accent
-text (`<strong class="keyword">`), not the whole answer. Match the user's marks and
+text (`<strong class="keyword">`), not the whole answer. In **quick** mode the answer
+is a keyword chain plus a short pointer list, covering every mark the full answer
+would earn. Match the user's marks and
 exam format; do not assume a mark allocation that was not supplied.
 
 **QA for a code lab.** When the source is a lab manual of programs rather than an
@@ -93,6 +100,56 @@ The algorithm, code and complexity conventions later in this skill apply only to
 blocks appropriate to the chosen type and requested scope. They do not require
 adding code, algorithms, or complexity to a textbook, mathematical walkthrough,
 or theory QA guide.
+
+### Depth: full or quick
+
+Depth controls how much the guide **explains**. It never changes the guide type,
+the theme, or what is covered. Full is the default; if the user does not say, take
+full and state it.
+
+Quick covers **exactly the same source material, to the same accuracy**. It just
+drops the explanation and assumes the reader knows what to do with a pointer.
+Write it the way the reader's own notes would look the night before an exam.
+
+| | Full | Quick |
+|---|---|---|
+| Theory | definitions in prose, one idea per paragraph | pointers and keywords — the term, then the phrase, value or formula that defines it |
+| Walkthrough | every meaningful step, with why the method applies | given → formula → substitution → result, one line naming the method |
+| QA answer | full model answer in prose | keyword chain plus a short pointer list; every mark still covered |
+| Code | complete program, compiled and run | the snippet that answers the question; a complete program still compiles and runs |
+| Diagrams | screenshot, cropped and captioned | same — a diagram is source content, not explanation |
+
+**What does not relax in quick mode:**
+
+- Coverage and correctness. Nothing in scope is dropped, and nothing becomes
+  approximate because it is terse. A pointer that is off by one term is still wrong.
+- Source algorithms, reproduced verbatim as numbered cards. They are already terse;
+  there is nothing to compress.
+- Complexity lines on every algorithm and code card — a complexity is a pointer.
+- Diagram screenshots, captions and legibility.
+- Every label, accent, hairline, spacing and verification rule in this skill.
+
+**What does relax:**
+
+- Narration. No section commentary, no "common mistake" essay, no rationale for a
+  method beyond one line. A section blurb stays one line.
+- `note` / `tip` become a single pointer sentence, and only when they carry a real
+  warning or a trap that costs marks. Do not convert prose into bullets just to
+  fill them.
+- A walkthrough states the method instead of arguing for it.
+
+Quick does not smuggle in content the type forbids: a quick textbook still has no
+worked examples and no code. Depth subtracts; it never adds.
+
+Quick is **shorter, not sparser** — the same rules fill a page to about 72%. Pointer
+lists and code snippets flow and split freely, so there is no reason for a quick
+guide to trail half-empty pages; if it does, the sections are too short, and the
+pointer list should carry the whole topic rather than one line per section.
+
+Emit pointers as `pts` items so they render as a hanging-indent list with a short
+accent dash, not as prose paragraphs. Keywords inside a pointer or a QA answer go in
+`strong.keyword`, exactly as in full depth — bold the marking term, never the whole
+line.
 
 ### Choose one of eight preset themes in chat
 
@@ -127,13 +184,16 @@ guides, not source files: several files combined into one guide do not require a
 split, but two separate PDFs do, including two requested theme variants.
 
 1. Identify each requested guide and its scope; use an explicit user split directly.
+   Resolve depth once per guide too — the same batch can mix full and quick guides.
 2. Resolve the theme once in chat for the batch, unless different themes were requested.
-3. Bake shared assets once per selected preset with the command above.
+3. Bake shared assets once per selected preset with the command above. Depth changes
+   no asset: both depths link the same `theme.css`.
 4. Delegate each guide to a subagent, assigning exclusive ownership of its build
-   directory and output PDF. Tell workers they share the workspace, must preserve
-   others' edits, and must use this skill, the selected preset and the already-baked
-   stylesheet, fonts and grain. They must include source diagram screenshots.
-   Workers must not launch the gallery or ask for another theme choice.
+   directory and output PDF, and state that guide's depth in the brief. Tell workers
+   they share the workspace, must preserve others' edits, and must use this skill,
+   the selected preset and the already-baked stylesheet, fonts and grain. They must
+   include source diagram screenshots. Workers must not launch the gallery or ask for
+   another theme choice.
 
 Run workers in waves within the environment's available concurrency slots. Retry a
 failed guide once, then report any remaining failure. Review every child's coverage,
@@ -213,11 +273,14 @@ One section per subject area. Each section is a short tag, a title, a one-line b
    {"t": "math", "tex": r"T(n) = \sum_{i=1}^{n} c_i", "num": 1},
    {"t": "table", "head": [...], "rows": [[...]], "caption": "..."},
    {"t": "note", "title": "Common mistake", "html": "<p>...</p>"},
+   {"t": "pts", "items": ["Linear search — scans every element, O(n)", "Binary search — needs sorted input, O(log n)"]},
    {"t": "qa", "num": 1, "questions": ["First wording", "Second wording", "Third wording"], "answer": "One model answer", "keywords": ["marking term"], "exam_likely": False},
  ]}
 ```
 
-Block types: `h2`, `h3`, `p`, `math`, `algo`, `code`, `work`, `fig`, `table`, `note`, `tip`, `qa`.
+Block types: `h2`, `h3`, `p`, `pts`, `math`, `algo`, `code`, `work`, `fig`, `table`, `note`, `tip`, `qa`.
+
+`pts` is the quick-mode pointer list — `{"t": "pts", "items": ["Keyword — the phrase or value that defines it", "..."]}`. One pointer per line, each opening with the term being pointed at, then the thing worth remembering. It renders as a hanging-indent list with a short accent dash, so a scan down the page hits every term. Use it for quick theory; keep prose `p` for the connective sentence that introduces a list and for anything that genuinely needs a sentence. Short symbols still go in `$…$`, so `$O(n \log n)$` renders as maths and not as typewriter text.
 
 Only choose block types allowed by the requested guide type. For a QA guide, use
 one `qa` item per shared answer, not three independent items. `num` is the item
@@ -232,7 +295,7 @@ finished guide.
 
 `math` is a display equation — its own block, rendered to SVG in Step 5, centred with space above and below, `num` optional for a right-aligned `(1)` when the prose cites it later. It is never inlined into a paragraph.
 
-**Write the prose like a person, not a brochure.** Concrete numbers, specific values from the source, an actual opinion about which approach to use. Cut every sentence that could be deleted with no loss — significance inflation ("plays a crucial role"), negative parallelism ("not just X, but Y") and trailing `, highlighting…` clauses are the fastest way to make a study guide read as filler.
+**Write the prose like a person, not a brochure.** Concrete numbers, specific values from the source, an actual opinion about which approach to use. Cut every sentence that could be deleted with no loss — significance inflation ("plays a crucial role"), negative parallelism ("not just X, but Y") and trailing `, highlighting…` clauses are the fastest way to make a study guide read as filler. In quick mode this applies to the pointers too: a pointer is a fact, not a mini-essay, and "important because…" is the first thing to cut.
 
 ---
 
@@ -310,7 +373,7 @@ Code lives in real files on disk and is read at render time, so a typo in a prog
 
 **Where the renderers must change to match this skill.** The block renderers live in `gen.py`; the per-section `c1.py` modules only pass item dicts.
 
-- `gen.py` gains a `math` renderer (display block, `class="eq"`, inline SVG from Step 5, optional `num` → `<span class="eqn">(1)</span>`) and an inline-math pass that rewrites `$…$` in `p`/`note`/`qa` prose to a small `<span class="imath">` SVG.
+- `gen.py` gains a `math` renderer (display block, `class="eq"`, inline SVG from Step 5, optional `num` → `<span class="eqn">(1)</span>`) and an inline-math pass that rewrites `$…$` in `p`/`pts`/`note`/`qa` prose to a small `<span class="imath">` SVG.
 - `gen.py` must **never uppercase label text**. Emit `Worked example`, `Watch the phase wrap`, `Quantity` — sentence case, acronyms intact. All label styling is one block in `base.css` (`.unit-tag, .nt, .work-h, thead th, .figcap, .cap, a.toc .d`), serif italic via `--font-label`.
 - `gen.py`'s `work`, `note`, `tip` renderers must **stop emitting the card wrapper**. Drop `.card`/`.card-h`/`.card-b` from those three; emit `.work-h` (label) + `.work-b` (steps) with `.work` as the open left-rule container, and `.nt` + body with `.note`/`.tip` as the open container. If they still wrap in `.card`, you get the old bordered box and the new CSS will look half-applied.
 - Keep `algo` → `.card`/`.card-h`/`.card-b` and `code` → `.code`/`.code-h` exactly as they are. Those are the two surviving cards.
@@ -329,6 +392,11 @@ Code lives in real files on disk and is read at render time, so a typo in a prog
   `.qa-long` so it can flow, keeping the number and the prompts with the start of
   the answer.
 - `table` renderer: drop any border/box wrapper; `table.data` is already open.
+- `pts` renderer (quick mode): a `<ul class="pts">` of `<li>` pointers. No bullets in
+  CSS — `base.css` draws the short accent dash as a `::before` and sets a hanging
+  indent, so a wrapped pointer aligns under its own text. Keep one pointer per `<li>`
+  and do not nest lists; a sub-point belongs in the pointer's own line after a
+  semicolon, or the structure is wrong for the material.
 - Unit and section chrome: each unit opens with `.unit` + `.unit-head`, whose `.unit-tag`
   is the small italic serif tag above the `h1`. `.unitbreak` forces a new page before a
   unit — use it only when the user asked for one guide page per topic, never by default.
@@ -553,6 +621,7 @@ Each of these was learned by shipping the wrong version first.
 | Worked example (`.work`) | a hand-worked derivation | **open** — `2px` dim left rule, label, indented mono steps |
 | Note / tip (`.note` / `.tip`) | a called-out warning or hint | **open** — left rule in amber/green, italic serif label, no fill, no border |
 | Definition / prose (`p`) | narration and definitions | **open** — no chrome at all, just spacing |
+| Pointer list (`ul.pts`) | quick-mode theory pointers | **open** — hanging indent + accent hairline marker, no bullets |
 | Q&A (`.qa`) | question + answer | **open** — no rule at all; space only |
 | Table (`.data`) | tabular data | **open** — hairlines only; the header wash stays, the box does not |
 
@@ -586,6 +655,7 @@ Table headers are **serif italic at 9.6pt in sentence case** on a 3.5% wash. No 
 | Display equation (`.eq`) | centred SVG, `margin: 7mm 0`, optional `(N)` floated right in mono faint, `page-break-inside: avoid` |
 | Complexity line | mono 7.4pt in the accent, `1px` hairline above, at the bottom of the algo/code card |
 | Q&A | no card — 4mm padding, question in Poppins 9.6pt light, answer dim; no rule between items, only the unit's opening rule separates subjects |
+| Pointer list (`ul.pts`) | open, no bullets: hanging indent 5mm, a 2.6mm accent hairline as the marker, 2.2mm between pointers, keywords in bold accent |
 | Contents | rows separated by hairlines, number in dim mono, page number floated right in the accent, sub-tag in italic serif |
 
 ---
@@ -726,6 +796,11 @@ Strip HTML entities before that test — `&lt;` contains a semicolon and will wr
 - No comments. Short names. Declarations at the top. A `while (1)` + `switch` menu for anything with a set of operations. Match the house style of the student's own submitted work.
 - Descriptive filenames in the card header (`array_operations.c`, `linked_list.c`), never source-derived ones (`expt3_…`, `ch4_…`).
 - No description paragraph above the code. Filename and code.
+- In **quick** mode, emit the snippet that carries the answer rather than a whole
+  program — but it still has to be real code lifted from something that compiles
+  and runs, not hand-written pseudo-code. If the requested task is "write a program",
+  quick mode still writes the program; quick trims explanation, never completeness
+  where completeness is what is being marked.
 
 ### Complexity
 
@@ -772,6 +847,7 @@ and written by `theme.py`. The `@page` background gotcha (above) applies to it.
 
 ## Checklist before delivering
 
+- [ ] Selected depth respected: quick covers every in-scope topic and loses no marks-bearing fact, but carries pointers/snippets instead of explained prose; full is unchanged
 - [ ] Selected guide type respected: textbook has only information/formulae/diagrams; walkthrough has explained solution steps; QA has the number of equivalent wordings the user chose (default three) and one shared answer per numbered item
 - [ ] Dividers checked: the unit head's rule is the only horizontal rule opening a block; no hairline sits between consecutive Q&A items
 - [ ] QA answers are in proper English, marking keywords highlighted, marks respected, and likely-question stars have an accurate legend and internal evidence

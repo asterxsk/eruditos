@@ -194,6 +194,30 @@ h3.sub {
 .work-b .g  { color: var(--ok, #7fc79c); }
 .work-b .r  { color: var(--bad, #e08585); }
 
+/* --------------------------------------------------------------- pointers */
+/* Quick mode's theory blocks: a hanging-indent list, not prose. The dash is
+   drawn in CSS so a wrapped pointer aligns under its own text, and it is a
+   hairline in the accent, not a bullet — a disc bullet at this size reads as a
+   slide. One pointer per line, nothing nested. */
+ul.pts {
+  margin: 0 0 calc(4.6mm * var(--rhythm, 1.15)) 0; padding: 0;
+  list-style: none;
+}
+ul.pts li {
+  padding-left: 5mm; text-indent: -5mm; margin: 0 0 2.2mm 0;
+  font-size: 9.8pt; line-height: 1.5; color: var(--text, #c3cbd5);
+  page-break-inside: avoid;
+}
+ul.pts li:last-child { margin-bottom: 0; }
+/* 2.6mm dash + 2.4mm gap == the 5mm hanging indent, so a wrapped pointer
+   aligns exactly under its own text rather than one glyph off. */
+ul.pts li::before {
+  content: ""; display: inline-block; width: 2.6mm; height: 1px;
+  margin-right: 2.4mm; vertical-align: 0.32em;
+  background: var(--accent, #79c0ff); opacity: 0.55;
+}
+ul.pts .keyword { color: var(--accent, #79c0ff); font-weight: 700; }
+
 /* ------------------------------------------------------------- equations */
 .eq { text-align: center; margin: 7mm 0; page-break-inside: avoid; }
 .eq svg, .eq img { vertical-align: middle; }

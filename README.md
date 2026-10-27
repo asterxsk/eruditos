@@ -44,6 +44,8 @@ A standalone reference builder. It harvests the source material (`.pptx`, `.docx
 - **Walkthrough** — worked sums and derivations, every step explained.
 - **QA** — an exam question bank: three equivalent wordings per numbered item, one shared model answer.
 
+Each type comes at **full** or **quick** depth. Quick covers exactly the same material with the same accuracy, but states it as pointers, keywords and code snippets rather than explained prose — for a revision sheet rather than a walkthrough.
+
 Diagrams from the source are captured as screenshots and kept legible; no author names, course codes, or source citations reach the finished guide.
 
 ### professor
