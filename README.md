@@ -38,7 +38,13 @@ They complement each other. `study-guide` produces a document to revise from; `p
 
 ### study-guide
 
-A standalone reference builder. It harvests the source material (`.pptx`, `.docx`, `.pdf`, images, pasted text), drafts a content map, generates the design assets, pre-renders every equation to SVG, and renders the PDF with WeasyPrint. Three guide types:
+A standalone reference builder. The agent harvests the source material (`.pptx`, `.docx`, `.pdf`, images, pasted text), then writes **one YAML content file** and calls the tool:
+
+```bash
+python study-guide/build.py guide.yaml --theme cobalt --type qa --depth quick
+```
+
+That is the whole build. `build.py` owns the theme assets, every block renderer, LaTeX-to-SVG maths, the contents page, the WeasyPrint render and the delivery checks — a guide takes about two seconds, and nothing is scripted per guide. `CONTENT-FORMAT.md` documents the schema; `build.py --example` prints a working file. Three guide types:
 
 - **Textbook** — definitions, formulae, and diagrams, organised by topic.
 - **Walkthrough** — worked sums and derivations, every step explained.
@@ -80,6 +86,8 @@ cp -r eruditos/assign-to-ai ~/.claude/skills/assign-to-ai
 ```text
 study-guide/
 ├── SKILL.md            the skill instructions
+├── CONTENT-FORMAT.md   the content-file schema build.py accepts
+├── build.py            content file in, checked PDF out
 ├── AGENTS.md           notes for agents working on the skill
 ├── docs/
 ├── picker/             theme picker: base.css, theme.py, presets, index.html

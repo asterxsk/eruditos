@@ -1,6 +1,6 @@
 ---
 name: "study-guide"
-description: "Build textbook, walkthrough, or QA PDF study guides at full or quick depth in one of eight preset themes from any subject's source material — slides, textbook chapters, lab manuals, notes."
+description: "Build textbook, walkthrough, or QA PDF study guides at full or quick depth in one of eight preset themes from any subject's source material — slides, textbook chapters, lab manuals, notes. One YAML content file in, one PDF out."
 ---
 
 # Study Guide
@@ -8,6 +8,12 @@ description: "Build textbook, walkthrough, or QA PDF study guides at full or qui
 Turn source material — slide decks, lab manuals, textbook chapters, past papers, messy notes — into a print-ready PDF study guide in the selected preset theme. Choose the requested guide type: textbook, walkthrough, or QA — at the requested depth, full or quick. Use one accent colour, hairline structure, and verified spacing.
 
 The output is a **standalone reference**: it never cites where the material came from.
+
+**Your input is one YAML content file plus three choices** — theme, guide type, depth.
+`build.py` turns that into the PDF in about two seconds: theme assets, block
+rendering, maths, contents page, render and delivery checks. Do not write Python per
+guide; the tool already exists. Its schema is `CONTENT-FORMAT.md` and a working
+sample is `python build.py --example`.
 
 ---
 
@@ -170,10 +176,9 @@ in chat; wait for their answer before styling or rendering. Source harvesting ma
 continue while they choose. If the gallery is unavailable, list the same eight
 names in chat and ask there; do not silently choose a saved design or default.
 
-Write `{"version": 1, "basedOn": "<chosen-preset>"}` to `design.json` in the build
-directory. Run `python picker/theme.py <build-dir> --preset <chosen-preset>`.
-The explicit preset is authoritative: legacy `picker/design.json` and arbitrary
-per-guide overrides must not replace its palette, layout, fonts or texture.
+Pass the chosen preset as `--theme <preset>` and it is authoritative: `build.py`
+reads the bundled preset directly, so a legacy `picker/design.json` or any per-guide
+override cannot replace its palette, layout, fonts or texture.
 Stop the gallery process after selection or when the task ends.
 `picker/design.schema.json` remains the underlying renderer config contract.
 
@@ -186,14 +191,11 @@ split, but two separate PDFs do, including two requested theme variants.
 1. Identify each requested guide and its scope; use an explicit user split directly.
    Resolve depth once per guide too — the same batch can mix full and quick guides.
 2. Resolve the theme once in chat for the batch, unless different themes were requested.
-3. Bake shared assets once per selected preset with the command above. Depth changes
-   no asset: both depths link the same `theme.css`.
-4. Delegate each guide to a subagent, assigning exclusive ownership of its build
-   directory and output PDF, and state that guide's depth in the brief. Tell workers
-   they share the workspace, must preserve others' edits, and must use this skill,
-   the selected preset and the already-baked stylesheet, fonts and grain. They must
-   include source diagram screenshots. Workers must not launch the gallery or ask for
-   another theme choice.
+   Nothing needs baking ahead of time now: each `build.py` run writes its own assets.
+3. Delegate each guide to a subagent, giving it its own content file and output PDF
+   path, and stating that guide's theme, type and depth in the brief. Tell workers
+   they share the workspace and must not overwrite another guide's content file or
+   PDF. Workers must not launch the gallery or ask for another theme choice.
 
 Run workers in waves within the environment's available concurrency slots. Retry a
 failed guide once, then report any remaining failure. Review every child's coverage,
@@ -259,315 +261,118 @@ Read the dumps before writing anything. The algorithms usually exist **verbatim*
 
 ---
 
-## Step 2 — Draft the content map
+## Step 2 — Write the content file
 
-One section per subject area. Each section is a short tag, a title, a one-line blurb, then items:
+**One YAML file. Do not write Python.** The build is a tool now:
 
-```python
-{"num": "01", "tag": "ARRAYS", "title": "Array Operations",
- "blurb": "One line saying what this section covers and who needs it.",
- "items": [
-   {"t": "algo", "pin": "Traversal", "title": "TRAVERSING AN ARRAY", "steps": [...], "cx": "O(n) time · O(1) extra space"},
-   {"t": "code", "file": "array_operations.c", "title": "array_operations.c", "cx": "O(n) overall"},
-   {"t": "work", "title": "Worked example", "steps": [...]},
-   {"t": "math", "tex": r"T(n) = \sum_{i=1}^{n} c_i", "num": 1},
-   {"t": "table", "head": [...], "rows": [[...]], "caption": "..."},
-   {"t": "note", "title": "Common mistake", "html": "<p>...</p>"},
-   {"t": "pts", "items": ["Linear search — scans every element, O(n)", "Binary search — needs sorted input, O(log n)"]},
-   {"t": "qa", "num": 1, "questions": ["First wording", "Second wording", "Third wording"], "answer": "One model answer", "keywords": ["marking term"], "exam_likely": False},
- ]}
+```bash
+python build.py guide.yaml --theme <preset> --type <textbook|walkthrough|qa> --depth <full|quick>
 ```
 
-Block types: `h2`, `h3`, `p`, `pts`, `math`, `algo`, `code`, `work`, `fig`, `table`, `note`, `tip`, `qa`.
+It owns the theme assets, every block renderer, the maths, the contents page, the
+PDF and the delivery checks. A guide takes seconds, not a scripting session. The
+full schema is in `CONTENT-FORMAT.md` beside it; `python build.py --example` prints
+a working file to edit.
 
-`pts` is the quick-mode pointer list — `{"t": "pts", "items": ["Keyword — the phrase or value that defines it", "..."]}`. One pointer per line, each opening with the term being pointed at, then the thing worth remembering. It renders as a hanging-indent list with a short accent dash, so a scan down the page hits every term. Use it for quick theory; keep prose `p` for the connective sentence that introduces a list and for anything that genuinely needs a sentence. Short symbols still go in `$…$`, so `$O(n \log n)$` renders as maths and not as typewriter text.
+Content goes in one section per subject area — a short tag, a title, a one-line
+blurb, then items:
 
-Only choose block types allowed by the requested guide type. For a QA guide, use
-one `qa` item per shared answer, not three independent items. `num` is the item
-number; `questions` holds the equivalent wordings — **three unless the user asked
-for another count in Step 0** — and every one of them must be answerable by the one
-`answer`. For a code lab, `questions` holds a single task sentence and can be
-emitted without the `Q.` prefix; the answer is the code and output cards. `keywords`
-identifies the terms to highlight; `exam_likely` controls the star. Store supporting
-likelihood evidence internally, not as extra Q lines or source citations in the
-finished guide.
+```yaml
+sections:
+  - tag: ARRAYS
+    title: Array Operations
+    blurb: Traversal, insertion and deletion on a fixed-size array.
+    items:
+      - pts:
+          - "**Traversal** — visit every element once, O(n)"
+      - algo:
+          pin: Traversal
+          title: TRAVERSING AN ARRAY
+          steps: ["[INITIALIZE] SET I = lower_bound", "..."]
+          cx: O(n) time · O(1) extra space
+      - code: {file: array_operations.c, lang: c, cx: O(n) overall}
+      - work: {title: Worked example, steps: ["..."]}
+      - math: {tex: "T(n) = \sum_{i=1}^{n} c_i", num: 1}
+      - table: {head: [Quantity, Value], rows: [[Time, "O(n)"]], caption: "..."}
+      - note: {title: Common mistake, text: "..."}
+      - qa:
+          num: 1
+          q: [First wording, Second wording, Third wording]
+          a: One model answer.
+          kw: [marking term]
+```
 
+Block keys: `p`, `h2`, `h3`, `pts`, `math`, `algo`, `code`, `work`, `fig`, `table`,
+`note`, `tip`, `qa`. Prose strings accept `**keyword**`, `` `code` ``, `*emphasis*`
+and `$inline math$`.
 
-`math` is a display equation — its own block, rendered to SVG in Step 5, centred with space above and below, `num` optional for a right-aligned `(1)` when the prose cites it later. It is never inlined into a paragraph.
+Only choose blocks the guide type allows — the tool rejects the rest before
+rendering, so a mistake costs a second, not a render:
+
+| Type | Blocks allowed |
+|---|---|
+| `textbook` | `p pts h2 h3 math fig table note tip algo` |
+| `walkthrough` | the above plus `work code` |
+| `qa` | `p pts h2 h3 math fig table note tip qa` |
+
+`pts` is the quick-mode pointer list: one pointer per line, each opening with the
+term being pointed at. It renders as a hanging-indent list with a short accent dash,
+so a scan down the page hits every term. Use it for quick theory; keep prose `p` for
+the connective sentence that introduces a list. Short symbols still go in `$…$`.
+
+For a QA guide, use one `qa` item per shared answer, not three items. `q` holds the
+equivalent wordings — **three unless the user asked for another count in Step 0** —
+and every one must be answerable by the one `a`. For a code lab, `q` is a single task
+sentence and the answer is `file` (plus optional `out`); for an algorithm answer,
+give `algo` instead of `a`. `kw` highlights the marking terms. `star: true` marks a
+likely question. Store likelihood evidence internally, never as citations in the
+guide.
+
+`num` is optional — the tool numbers items in document order across sections, which
+is the right default. Supply it only to force a number.
+
+`math` is a display equation rendered to SVG and centred, `num` optional for a
+right-aligned `(1)`. It is never inlined into a paragraph; inline `$…$` is for a
+short symbol.
 
 **Write the prose like a person, not a brochure.** Concrete numbers, specific values from the source, an actual opinion about which approach to use. Cut every sentence that could be deleted with no loss — significance inflation ("plays a crucial role"), negative parallelism ("not just X, but Y") and trailing `, highlighting…` clauses are the fastest way to make a study guide read as filler. In quick mode this applies to the pointers too: a pointer is a fact, not a mini-essay, and "important because…" is the first thing to cut.
 
 ---
 
-## Step 3 — Generate the design assets
+## Step 3 — Build and verify
 
-**Do not hand-roll the stylesheet or the grain.** `picker/theme.py` resolves the design
-config and writes everything the page needs into the build directory in one call:
-
-```bash
-python picker/theme.py <build-dir> --preset <chosen-preset>
-```
-
-Pass `--preset <chosen-preset>` as shown in Step 0. The CLI reads the selected
-bundled preset directly and writes:
-
-| Output | What it is |
-|---|---|
-| `theme.css` | `picker/base.css` — the whole static stylesheet — with this design's `:root` tokens and `@page` rule generated ahead of it. The page links this one file. |
-| `fonts/*.woff2` | the bundled faces the config's roles reference, copied in so the `@font-face` URLs resolve. **Without this the guide silently falls back to Georgia and Segoe UI** — the page still renders, so the failure is invisible unless you read the embedded font names back out of the PDF. |
-| `grain.png` | the uniform 220px tile (no patch, or `texture: none`). |
-| `grain-patch.png` | the page-sized raster, with the density patch baked into the pixels. |
-
-**The patch is a density boost, not a mask.** Grain is uniform everywhere and simply
-thicker inside a radius around the patch point, fading to the uniform field at the edge.
-It **must be baked into the raster** — WeasyPrint silently ignores `mask-image`, so a
-CSS mask over a uniform tile renders as a hard-edged disc, not a falloff. Measured boost
-for a strength of 2.0 is about 2.7x; the page-sized raster generates in under a second.
-
-**Read `picker/base.css` before writing any HTML.** It already defines every container
-the block renderers emit — `.unit-head`, `.card`/`.card-h`/`.card-b`, `.code`/`.code-h`,
-`.work`/`.work-h`/`.work-b`, `.note`/`.tip`, `.eq`, `table.data`, `.qa`,
-`.contents-item`, `.cx` — and every break rule. **Do not restate any of it in the page.**
-The class names are the contract between the renderer and the stylesheet.
-
-WeasyPrint constraints `base.css` already respects, measured on this machine
-(see `.scratch/picker/research/weasyprint-css-support.md`): no `color-mix()`, no
-`mask-image`, no `filter`, no `backdrop-filter`; no comma inside a `var()` fallback (it
-is silently truncated at the first comma). `calc()` and `var()` both work, including in
-`@page`. Stay inside that subset if you add CSS.
-
-Only if you are working without `theme.py` at all, build the uniform tile by hand:
-
-```python
-from PIL import Image
-import random
-random.seed(7)
-S = 220
-img = Image.new("RGBA", (S, S)); px = img.load()
-for y in range(S):
-    for x in range(S):
-        a = max(0, min(26, int(random.gauss(11, 6))))
-        px[x, y] = (255, 255, 255, a)
-        a = max(0, min(22, int(random.gauss(9, 5))))
-        px[x, y] = (0, 0, 0, a)
-img.save("grain.png")
-```
-
-Roughly 4% alpha, mixed light and dark. Heavier reads as compression artefacts; lighter disappears.
-
----
-
-## Step 4 — Build the HTML
-
-One Python module per section (`c1.py`, `c2.py`, …) plus a `gen.py` that owns the block renderers and assembly. The page's only stylesheet is the `theme.css` Step 3 generated:
-
-```html
-<link rel="stylesheet" href="theme.css">
-```
-
-Do not inline a `<style>` block and do not re-declare any rule `base.css` already holds; `gen.py` emits HTML and nothing else.
-
-Syntax-highlight code with Pygments (`CppLexer` handles C, C++ and Java acceptably; `HtmlFormatter(nowrap=True)` then map the classes in CSS). **Pygments is not installed on this machine** - either `pip install pygments`, or emit the token spans by hand; do not assume the import succeeds.
-
-Code lives in real files on disk and is read at render time, so a typo in a program is visible and fixable in one place.
-
-**Where the renderers must change to match this skill.** The block renderers live in `gen.py`; the per-section `c1.py` modules only pass item dicts.
-
-- `gen.py` gains a `math` renderer (display block, `class="eq"`, inline SVG from Step 5, optional `num` → `<span class="eqn">(1)</span>`) and an inline-math pass that rewrites `$…$` in `p`/`pts`/`note`/`qa` prose to a small `<span class="imath">` SVG.
-- `gen.py` must **never uppercase label text**. Emit `Worked example`, `Watch the phase wrap`, `Quantity` — sentence case, acronyms intact. All label styling is one block in `base.css` (`.unit-tag, .nt, .work-h, thead th, .figcap, .cap, a.toc .d`), serif italic via `--font-label`.
-- `gen.py`'s `work`, `note`, `tip` renderers must **stop emitting the card wrapper**. Drop `.card`/`.card-h`/`.card-b` from those three; emit `.work-h` (label) + `.work-b` (steps) with `.work` as the open left-rule container, and `.nt` + body with `.note`/`.tip` as the open container. If they still wrap in `.card`, you get the old bordered box and the new CSS will look half-applied.
-- Keep `algo` → `.card`/`.card-h`/`.card-b` and `code` → `.code`/`.code-h` exactly as they are. Those are the two surviving cards.
-- `fig` renderer: `.fig` container with an `<img>` of the source diagram screenshot
-  and a `.figcap` caption. Keep the image and caption together across page breaks.
-  Include every diagram relevant to the requested scope; do not replace source
-  screenshots with redraws. A supplementary SVG explanation may accompany the image.
-- QA guide renderer: emit `.qa` with one `.qa-num` line containing the item number
-  and optional `.qa-star`, then one `.q` paragraph per wording (default three,
-  prefixed `Q.` unless the guide is a code lab), then one `.a` block prefixed
-  `Ans.` Escape content before inserting safe keyword
-  markup; highlight only the intended words using `strong.keyword`. Do not repeat
-  the number on each Q line, use three columns, or provide several answers. Emit
-  no rule between items — `.qa` is deliberately borderless so the unit head is the
-  only divider. Keep a short item together; for an answer longer than a page, use
-  `.qa-long` so it can flow, keeping the number and the prompts with the start of
-  the answer.
-- `table` renderer: drop any border/box wrapper; `table.data` is already open.
-- `pts` renderer (quick mode): a `<ul class="pts">` of `<li>` pointers. No bullets in
-  CSS — `base.css` draws the short accent dash as a `::before` and sets a hanging
-  indent, so a wrapped pointer aligns under its own text. Keep one pointer per `<li>`
-  and do not nest lists; a sub-point belongs in the pointer's own line after a
-  semicolon, or the structure is wrong for the material.
-- Unit and section chrome: each unit opens with `.unit` + `.unit-head`, whose `.unit-tag`
-  is the small italic serif tag above the `h1`. `.unitbreak` forces a new page before a
-  unit — use it only when the user asked for one guide page per topic, never by default.
-
----
-
-## Step 5 — Pre-render the math to SVG
-
-WeasyPrint cannot do MathML and cannot run MathJax at render time. So every equation is **pre-rendered to SVG at build time** and embedded in the HTML. Vector, not a rasterised screenshot — a 300 dpi PNG of a fraction still looks soft next to the text.
-
-Two ways to produce that SVG. Take the first one that works and move on.
-
-**A. MathJax → SVG via node (preferred — full LaTeX, Computer Modern).**
-
-`node --version` (v26 fine), `npm install mathjax-full` in the build dir. Then a converter that reads a jobs file and writes one SVG per equation:
-
-```javascript
-// tex2svg.js — run: node tex2svg.js jobs.json '#c8cfd8'
-const {mathjax} = require('mathjax-full/js/mathjax.js');
-const {TeX} = require('mathjax-full/js/input/tex.js');
-const {SVG} = require('mathjax-full/js/output/svg.js');
-const {liteAdaptor} = require('mathjax-full/js/adaptors/liteAdaptor.js');
-const {RegisterHTMLHandler} = require('mathjax-full/js/handlers/html.js');
-const {AllPackages} = require('mathjax-full/js/input/tex/AllPackages.js');
-const fs = require('fs');
-const adaptor = liteAdaptor();
-RegisterHTMLHandler(adaptor);
-const tex = new TeX({packages: AllPackages});
-const svg = new SVG({fontCache: 'local'});        // 'local' = glyph outlines in <defs>, no external font
-const doc = mathjax.document('', {InputJax: tex, OutputJax: svg});
-const COLOR = process.argv[3] || '#c8cfd8';
-for (const j of JSON.parse(fs.readFileSync(process.argv[2], 'utf8'))) {
-  const node = doc.convert(j.tex, {display: j.display !== false, em: 16, ex: 8, containerWidth: 80 * 16});
-  let out = adaptor.outerHTML(adaptor.childNodes(node)[0]);
-  out = out.replace(/currentColor/g, COLOR);      // see the gotcha below — <img> SVG cannot inherit colour
-  fs.writeFileSync(j.out, out);
-  console.log(j.out, out.length);
-}
-```
-
-Run node **hidden/headless** — no foreground interactive process, no visible terminal. It is a batch build step, not something the user watches.
-
-**B. matplotlib mathtext (fallback — pure Python, no node, no LaTeX install).**
-
-```python
-import matplotlib; matplotlib.use("Agg")
-from matplotlib import mathtext
-import re
-def mtex(tex, out, color="#c8cfd8"):
-    mathtext.math_to_image(tex, out, format="svg", dpi=200, color=color)
-    s = open(out, encoding="utf-8").read()
-    s = re.sub(r'<g id="patch_1">.*?</g>\s*', "", s, flags=re.S)   # opaque white page patch
-    s = s.replace("fill: #ffffff", "fill: none")
-    open(out, "w", encoding="utf-8").write(s)
-```
-
-`import matplotlib` first; if missing, `pip install matplotlib`. Handles a good subset — fractions, `\sum`/`\int` with limits, Greek, `\log`, matrices via `\begin{matrix}`. **It is not LaTeX**: `\le` and `\left[\begin{matrix}…\right]` both parse-error (`\leq` works, `\left`/`\right` do not). If an equation fails to parse, that is your signal to fix the MathJax path rather than rewrite the maths.
-
-`latex2mathml` is a dead end here — it emits MathML, and WeasyPrint does not render MathML. Only use it if you first prove WeasyPrint lays it out; it will not.
-
-Verification that the mechanism actually ran, not silently produced blank files:
+The one command does both. Assets, maths, render and checks:
 
 ```bash
-ls -l eq*.svg                              # a real equation is 3–7 KB; a blank one is a few hundred bytes
-grep -o '<path' eq_sum.svg | wc -l         # must be > 0 (use -o | wc -l: the SVG is one line, so -c always says 1)
-grep -o 'href="[^#][^"]*"' eq*.svg         # must be empty — no external font or image references
+python build.py guide.yaml --theme cobalt --type qa --depth quick
 ```
 
-Then embed. Inline SVG inherits the page colour; `<img src="eqN.svg">` does not, so the converter bakes the hex fill in (see the gotcha). Prefer inline for display equations — one fewer file per page — and `<img>` only when the same equation repeats.
+Every build runs the delivery checks unless `--no-check`:
 
-### Display vs inline
+- **Sparse pages** — anything under 72% full except the cover, contents and last
+  page. One gap is structural: a code card cannot split, so a listing pushed to the
+  next page leaves its own page short. That is reported, not failed.
+- **Margin seams** — a step between the margin and the content box, which is exactly
+  what the `@page` background bug looks like. Verified against a deliberately broken
+  stylesheet, so a pass means something.
+- **Leaks** — escaped entities, `None`, `Traceback`, raw LaTeX, and unrendered `$…$`.
+- **Fonts** — warns if no bundled face reached page 1.
 
-- **Display** (`{"t": "math", "tex": …}`) gets its own centred block: `margin: 7mm 0`, `page-break-inside: avoid`, an optional right-aligned number. Fractions, summations, matrices, derivations — anything a marker would write on its own line.
-- **Inline** (`$…$` in prose) is for a short symbol only: `$O(n \log n)$`, `$x^2$`, `$n$`. Render it the same way to a small SVG and set it on the text baseline with `vertical-align`.
+Read the output. Fix the content file and run it again; never hand-edit the built
+`doc.html` or `theme.css`.
 
-If it is a real equation, a derivation step, or looks wrong squeezed into a sentence — it goes in a display block. Inline math that breaks the line height is the tell that it should have been display.
+### When the tool is not the right tool
 
-### The math gotchas
+`build.py` covers whole guides. Reach for the lower-level pieces only when changing
+how the skill itself looks or behaves, not when making a guide:
 
-- **`<img>`-embedded SVG cannot inherit `currentColor`.** MathJax emits `fill="currentColor"`; inline, that picks up the body colour and works, but the moment the same file is referenced as `<img src>`, there is no inheritance context and it resolves to black — invisible on a dark page. Bake the hex in at build time (`out.replace(/currentColor/g, "#c8cfd8")`). This is the one that wastes an afternoon.
-- **`base_url` again.** Any `<img src="eqN.svg">` by relative path needs `base_url` on the `HTML(...)` call, same class of bug as the grain PNG — it renders nothing, silently.
-- **Self-contained SVGs only.** Convert fonts to outlines (`fontCache: 'local'` for MathJax, `svg.fonttype = "path"` for matplotlib) and keep no external `href`. An SVG that reaches for a font the render host does not have falls back to the body font and the maths loses its shape.
-- **matplotlib writes an opaque white background.** Strip `<g id="patch_1">` or every equation carries a white box onto the dark page.
-- **Duplicate `<defs>` ids across inlined equations.** Two SVGs inlined on the same page can define the same glyph id; WeasyPrint resolves them consistently and it renders fine in practice, but if a glyph ever comes out wrong, that is the cause — the fix is to uniquify the ids per equation, or reference repeated equations as `<img src>` instead of inlining them twice.
+- `picker/theme.py` — the theme assets on their own.
+- `picker/base.css` — the stylesheet. This is where the design lives.
+- `picker/server.py` — the read-only theme gallery offered in Step 0.
 
----
-
-## Step 6 — Render
-
-```python
-from weasyprint import HTML
-HTML("doc.html", base_url="/tmp/build/").write_pdf("doc.pdf")
-```
-
-`base_url` is required — the grain PNG is referenced relatively and silently vanishes without it.
-
-If WeasyPrint is missing: `pip install weasyprint --break-system-packages`. Note that **WeasyPrint 70.0 ignores `background-origin` and `background-clip` on `@page` silently** - the page background is anchored at the content box and no warning is emitted. See the gotcha below for the working fix; it is not `background-origin`. Chromium/Playwright also work if present - swap the render call and keep the CSS as-is.
-
----
-
-## Step 7 — Verify spacing before delivering
-
-Two mechanical checks catch everything. Run both; do not eyeball it.
-
-**Rasterise with PyMuPDF, not poppler.** `pdftoppm`/`pdftocairo` are absent on this
-machine, but PyMuPDF is installed and rasterises directly:
-
-```python
-import pymupdf   # the fitz module is deprecated; import pymupdf
-doc = pymupdf.open("doc.pdf")
-for i, page in enumerate(doc, 1):
-    page.get_pixmap(dpi=40).save(f"px/p-{i:02d}.png")
-```
-
-**A. Fill ratio — finds near-empty pages.**
-
-```python
-from PIL import Image
-import glob, os
-files = sorted(glob.glob("px/p-*.png"))          # rasterise first - see below; pdftoppm is absent
-im0 = Image.open(files[0]); W, H = im0.size
-top = int(19 / 25.4 * 40); bot = H - int(22 / 25.4 * 40)   # match the @page margins
-for f in files:
-    n = int(os.path.basename(f).split("-")[1].split(".")[0])
-    px = Image.open(f).convert("L").load()
-    last = top
-    for y in range(top, bot):
-        for x in range(0, W, 3):
-            if px[x, y] > 95: last = y; break
-    frac = (last - top) / (bot - top)
-    if frac < 0.72: print("sparse page", n, round(frac, 2))
-```
-
-Deliberate exceptions are the cover, the contents page and a closing page. Anything else under 72% is a bug — almost always a card that could not split, or a forced section break. One gap is unavoidable: `.code` sets `overflow: hidden`, so a card cannot break across pages, and the last item before a new unit can leave a quarter page empty rather than splitting its listing. That is the preferred failure — splitting a code card mid-listing reads worse than the gap.
-
-**B. Top-edge seam — finds the flat band.**
-
-```python
-im = Image.open("page.png").convert("RGB"); W, H = im.size
-for y in (3, 20, 45, 59, 61, 75, 400):
-    row = [im.getpixel((x, y)) for x in range(8, W - 8, 9)]
-    print(y, tuple(sum(c[i] for c in row) // len(row) for i in range(3)))
-```
-
-The averages must drift smoothly. A jump right at the top margin means the page gradient is not covering the margins — see the gotcha below.
-
-**C. Side edges — finds the left/right band.**
-
-Check B averages *across* each row, so it cannot see a vertical band: the bad strip is
-part of the average it is already taking. Scan the other axis, comparing each column
-against the middle of the page. Sample a block, not a single pixel — grain is noise.
-
-```python
-im = Image.open("page.png").convert("RGB"); W, H = im.size
-mid = W // 2
-def col(x, y0, y1):                       # block average down one column
-    c = [im.getpixel((x, y)) for y in range(y0, y1, 4)]
-    return tuple(sum(p[i] for p in c) // len(c) for i in range(3))
-ref = col(mid, H//3, 2*H//3)
-for x in (1, 4, 8, 12, W-12, W-8, W-4, W-2):
-    v = col(x, H//3, 2*H//3)
-    print(x, v, "DIFFERS" if max(abs(v[i]-ref[i]) for i in range(3)) > 3 else "")
-```
-
-Every column must match the middle. A column at the sheet edge that is visibly darker
-than the middle is the content-box anchor bug: the background is not reaching the
-margin. It is invisible in the gradient alone (which is near-flat across a page and
-hides it) and shows up only in the **grain**, so run this on a build with the texture on.
-
-
----
+The WeasyPrint constraints `base.css` respects, and the reasons for them, stay in
+force for anyone editing it: no `color-mix()`, no `mask-image`, no `filter`, no
+comma inside a `var()` fallback, and the `@page` background shim described below.
 
 ## Visual design system
 
@@ -594,8 +399,9 @@ role each token plays:
 --code-fill/text/keyword/comment/selection
 ```
 
-The light presets (`paper`, `sepia`) invert the same roles and give the code card a
-*dark* fill — the code card is the one container that grounds against the page tone.
+The light presets (`cobalt`, `paper`, `sepia`, `ice`, `mono`) invert the same roles
+and give the code card a *dark* fill — the code card is the one container that grounds
+against the page tone.
 
 ### The rules that make it look designed rather than templated
 
@@ -657,6 +463,9 @@ Table headers are **serif italic at 9.6pt in sentence case** on a 3.5% wash. No 
 | Q&A | no card — 4mm padding, question in Poppins 9.6pt light, answer dim; no rule between items, only the unit's opening rule separates subjects |
 | Pointer list (`ul.pts`) | open, no bullets: hanging indent 5mm, a 2.6mm accent hairline as the marker, 2.2mm between pointers, keywords in bold accent |
 | Contents | rows separated by hairlines, number in dim mono, page number floated right in the accent, sub-tag in italic serif |
+| Cover | no rule, 46mm top space, italic tag, 34pt title at −0.7px, 11pt dim subtitle, and a dark terminal card of `$ command  # note` lines |
+| Figure | centred `<img>` at up to 100% width and 94mm tall, italic serif caption under it, kept with the image across pages |
+| Inline maths | `span.imath` wrapping the SVG at 1.15em so it sits on the baseline at body size, in a card as well as a paragraph |
 
 ---
 
@@ -673,7 +482,7 @@ Table headers are **serif italic at 9.6pt in sentence case** on a 3.5% wash. No 
 
 - **19mm top / 22mm bottom** keeps content clear of both the sheet edge and the footer. Footers need `padding-bottom: 5mm` so the page number does not crowd the trim.
 - Footers: page number on the right in mono, and nothing else unless asked.
-- **15mm sides** gives about 180mm of text width. At 7.5pt DejaVu Sans Mono a character is ~1.59mm, so plan for **≤ 105 characters per code line** — measure the source files (`awk '{print length}' f | sort -rn | head -1`) and wrap anything longer by hand before it ever reaches the PDF.
+- **15mm sides** gives about 180mm of text width. At 7.5pt DejaVu Sans Mono a character is ~1.59mm, so plan for **≤ 105 characters per code line**. `build.py` enforces this: a code block with a longer line is an error naming the file and the length, so wrap it by hand before it reaches the PDF.
 
 ### The `@page` background gotcha
 
@@ -703,8 +512,11 @@ source of truth for the geometry — read it for the emitted shape. The invarian
   for `grain-patch.png` sized to the sheet; otherwise it is the `220px 220px` tile with
   `repeat`.
 
-Verify with check B **and** check C below — a row-average scan is blind to a side band,
-because it averages *across* the very strip that is wrong.
+`build.py` verifies this on every build: it compares a strip just outside each margin
+with a strip just inside the content box, in rows and columns that hold no content, and
+fails on a step between them. A page-wide reference cannot be used — the background is
+a gradient, so it genuinely differs top from bottom, and a large card can own the page's
+modal colour.
 
 ### Break control — the difference between flowing and gappy
 
@@ -766,29 +578,18 @@ Step 2: [INITIALIZE] SET I = lower_bound
 Step N: Stop
 ```
 
-Two things to get right:
+**`build.py` does the numbering.** Put the source steps in the `algo` block exactly
+as they appear — no `Step 1: Start` line — and the tool adds the bookends, numbers
+the steps and shifts every internal reference by the same offset. It leaves a
+listing alone when it sees braces or semicolons, so a function body is never
+bookended.
 
-- **Keep the source's wording and numbering.** Do not rewrite `[INITIALIZE]` into plain English — reproduce it.
-- **When Start is prepended, shift every internal reference with it.** `Repeat Steps 3 and 4` becomes `Repeat Steps 4 and 5`; `Go to step 6` becomes `Go to step 7`; `[End of step 2 loop]` becomes `[End of step 3 loop]`. Miss this and the algorithm cites steps that no longer exist.
+What you still get right in the content:
 
-A reference bumper that handles all the shapes:
-
-```python
-def bump_refs(txt, off):
-    def rep(m):
-        return re.sub(r"\d+", lambda d: str(int(d.group(0)) + off), m.group(0))
-    return re.sub(r"[Ss]teps? \d+(?:\s+(?:and|to)\s+\d+)*", rep, txt)
-```
-
-Shift by a uniform offset rather than renumbering sequentially — sequential renumbering silently breaks references to steps that were never numbered in the source.
-
-**Do not** bookend a pure code listing (a function body with braces or semicolons). Detect them and leave them alone:
-
-```python
-if any(("{" in l or "}" in l or ";" in l) for l in lines): skip_bookends()
-```
-
-Strip HTML entities before that test — `&lt;` contains a semicolon and will wrongly flag every algorithm that uses a `<`.
+- **Keep the source's wording.** Do not rewrite `[INITIALIZE]` into plain English —
+  reproduce it. The tool never paraphrases.
+- **Keep the source's step order.** The tool shifts references by a uniform offset;
+  it cannot recover an order you changed.
 
 ### Code
 
@@ -831,11 +632,12 @@ The cover carries a title, a one-line subtitle, and a terminal-style block. Noth
 ## Reference CSS
 
 The stylesheet is **not** reproduced here — it ships in the skill as `picker/base.css`,
-the single source of truth for every component the renderers emit. Read it before
-writing HTML, and treat its class names as the contract between `gen.py` and the page.
+the single source of truth for every component `build.py` renders. Read it before
+changing how a guide looks; its class names are the contract between the renderer and
+the page.
 
-`theme.py` (Step 3) concatenates it into the guide's `theme.css` **ahead of** the
-generated `:root` tokens and `@page` rule, so the built page links exactly one file.
+`theme.py` concatenates it into the guide's `theme.css` **ahead of** the generated
+`:root` tokens and `@page` rule, so the built page links exactly one file.
 Edit `base.css` to change how the guide looks; never edit a built `theme.css` by hand,
 since the next `theme.py` run overwrites it.
 
@@ -858,12 +660,8 @@ and written by `theme.py`. The `@page` background gotcha (above) applies to it.
 - [ ] Every algorithm starts `Step 1: Start` and ends `Step N: Stop`, references shifted to match
 - [ ] Every algorithm card and code card has a complexity line
 - [ ] No source citations, no experiment or chapter numbers, no descriptive paragraphs above code
+- [ ] `python build.py` ran clean: no sparse-page warning, no margin seam, no leak, no font fallback — the tool checks all four on every build
 - [ ] No author name, roll number or course code anywhere
-- [ ] Fill-ratio check run — only cover, contents and closing page under 72%
-- [ ] Edge checks run — **both** axes: row averages drift smoothly across the top margin (B) **and** every column matches the page centre (C). The gradient is near-flat across a page, so a missing side band shows only in the grain
-- [ ] Every display equation rendered to SVG — no blank `eq*.svg`, every file thousands of bytes with `<path>` in it
-- [ ] `pdftotext` grepped for leaked markup (`&amp;`, `&lt;`, `None`, `Traceback`) **and for leaked LaTeX**: `grep -nE '\\\\(frac|sum|begin|alpha|beta|gamma|log|varepsilon)|[^0-9]\$'` must be empty, so no raw `$…$` or backslash command reached the page
-- [ ] Fonts actually embedded — read the names back out of the PDF (`pymupdf` `get_fonts()`); the bundled families assigned to the selected preset must appear, not unintended fallback fonts
 - [ ] One accent colour, hairline structure, grain visible but not obvious
 - [ ] Cards are the exception — more than two or three real cards on a page means boxes have crept back in where an open block belonged
 - [ ] No label is uppercase or tracked — `grep -nE 'text-transform:\s*uppercase' theme.css` and `grep -nE 'letter-spacing:\s*[0-9.]*[1-9]' theme.css` both empty, and `grep -nE '>[A-Z][A-Z /&·-]{3,}<' ` over the built HTML finds no shouted label. Every label reads `Worked example`, not `WORKED EXAMPLE`, and acronyms survived (`HRTF`, `ITD`, `FFT`, `8D` — not `Hrtf`)
