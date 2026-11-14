@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "name": "paperx",
+  "themes": ["light"],
+  "light": {
+    "base": "#ffffff",
+    "gradient": {"from": "#ffffff", "via": "#ffffff", "to": "#ffffff", "angle": 0},
+    "strong": "#171717", "text": "#171717", "dim": "#444444", "faint": "#555555",
+    "rule": "#bbbbbb", "ruleStrong": "#999999", "accent": "#1767c7",
+    "blockFill": "#f8faff", "wash": "#f4f4f1", "dimSoft": "#777777",
+    "warn": "#876000", "warnLine": "#bc8509", "ok": "#00734e", "okLine": "#00976a", "bad": "#b14722",
+    "code": {"fill": "#16181d", "text": "#d7dbe2", "keyword": "#93b4e8", "comment": "#a2a8b2"}
+  },
+  "gradient": {"shape": "flat", "texture": "none"},
+  "layout": "normal",
+  "fonts": {
+    "heading": {"source": "bundled", "family": "Guide Sans", "size": 16},
+    "body": {"source": "bundled", "family": "Guide Serif", "size": 9.5},
+    "code": {"source": "bundled", "family": "DejaVu Sans Mono", "size": 7.5},
+    "label": {"source": "bundled", "family": "Guide Sans", "size": 6.4}
+  }
+}

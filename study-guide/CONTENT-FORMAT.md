@@ -1,227 +1,211 @@
 # Content format
 
-One YAML (or JSON) file is the whole input to `build.py`. It carries the content
-and, optionally, the choices; everything else — theme assets, block rendering,
-maths, contents page, PDF, delivery checks — the tool owns.
+One YAML or JSON file is the input to `build.py`. Theme controls appearance; mode
+controls what the agent writes. Every theme opens with contents, followed by topics.
 
 ```bash
-python build.py guide.yaml --theme cobalt --type qna --depth quick
-python build.py guide.yaml                 # theme/type/depth read from the file
-python build.py --example guide.yaml     # write a working sample to edit
+python build.py --example guide.yaml
+python build.py guide.yaml --theme paperx --mode full
 ```
 
-Flags win over the file; the file wins over the defaults (`dark`, `default`, `full`). Output is `<content-stem>.pdf` next to the content file unless `-o`
-is given.
+CLI settings override the file. Renderer fallbacks are `theme: paper` and
+`mode: full`; these are not permission to skip the skill's opening questions.
+Collect missing theme/mode choices with the harness's built-in question tool,
+recommend Full for an in-depth guide, then use the supplied source or request it
+if absent. Quick is for skimming and last-minute revision.
+The only themes are `paper`, `paperx`, `obsidian`; the only modes are `full`,
+`quick`. Output is `<content-stem>.pdf` unless `-o` supplies a path.
 
-## Top level
+Full contains concise textbook-style topic answers covering the requested
+essentials. Quick is a deliberately selective crux for revision, not the same
+coverage compressed. Selection is an authoring decision; the renderer does not
+decide which source topics are important or make completeness claims.
+
+## A practical guide file
 
 ```yaml
 meta:
-  title: Operating Systems          # required in practice; the cover prints it
-  subtitle: Everything from the twelve lectures.
-  tag: CS 301 · Revision            # the small line above the title
-  terminal:                         # the cover's terminal block; omit for none
-    - cmd: python build.py guide.yaml --theme cobalt
-      note: rebuilds this file
-  contents_title: Contents          # optional, defaults to "Contents"
-  contents_blurb: ...               # optional line under the contents heading
-
-theme: cobalt                       # dark graphite cobalt obsidian paper sepia ice mono
-type: qna                           # default | qna | code
-depth: quick                        # full | quick
-
-closing: Built from the lecture slides.   # optional closing line
-
+  title: Demand and Supply
+theme: paperx
+mode: full
 sections:
-  - tag: SCHEDULING
-    title: CPU Scheduling
-    blurb: The policies and the trade they make.
+  - title: Demand
     items:
-      - pts: [...]
+      - h2: Movement along versus shift of demand
+      - theory:
+          paragraphs:
+            - "A change in the commodity's **own price** moves quantity demanded along the same demand curve, with other determinants held constant."
+          points:
+            - "A fall in price produces an extension; a rise produces a contraction."
+            - "A change in another determinant shifts the entire curve."
+      - table:
+          head: [Change, Cause, Result]
+          rows:
+            - [Quantity demanded, Own price, Movement along the same curve]
+            - [Demand, Another determinant, Shift of the curve]
+      - note:
+          title: Holding other factors constant
+          text: "The movement comparison assumes income, tastes and related prices are unchanged."
 ```
 
-Each section is one unit: an italic tag, an `h1`, a one-line blurb, then items.
-The unit's top hairline is the only horizontal rule that opens a block.
+`sections` is an ordered list of topic groups; each has a `title` and `items`.
+Use `h2` and `h3` for content-specific headings within a group. Contents navigation
+and page numbers are global. `meta.title` identifies the document; it does not
+create a cover. Do not encode preliminary guides or checklists as extra sections.
 
-## Items
+## Content primitives
 
-Every item is a single-key mapping. A bare string is shorthand for `p:`.
+Each item is a single-key mapping; a bare string is shorthand for `p:`. The same
+primitives are available in both modes and all themes.
 
-| Key | Shape | Renders as |
+| Key | Shape | Purpose |
 |---|---|---|
-| `p` | `"text"` | a paragraph |
-| `h2` | `"Title"` | a ruled subheading |
-| `h3` | `"Title"` | a plain subheading |
-| `pts` | `["pointer", ...]` | hanging-indent pointer list (quick theory) |
-| `math` | `{tex: "...", num: 1}` or `"..."` | centred display equation, inline SVG |
-| `algo` | `{pin, title, steps: [...], cx}` | numbered algorithm card |
-| `code` | `{file: a.c, lang: c, cx: "..."}` or `{text: "..."}` | code card |
-| `work` | `{title, steps: [...]}` | open worked-example block |
-| `fig` | `{file: img.png, caption: "..."}` | figure with a caption |
-| `table` | `{head: [...], rows: [[...]], caption}` | hairline table |
-| `note` | `{title, text}` | amber callout |
-| `tip` | `{title, text}` | green callout |
-| `qa` | see below | one numbered question item |
-| `fn` | see below | one function, explained (code guide) |
+| `p` | `"text"` | explanatory paragraph |
+| `pts` | `["point", ...]` | concise pointers |
+| `h2` | `"Topic title"` | topic heading |
+| `h3` | `"Subtopic title"` | subordinate heading |
+| `theory` | `{paragraphs: [...], points: [...]}` | related prose/points without a generic printed label |
+| `math` | `{tex: '...', num: 1}` or `'...'` | display equation rendered as SVG |
+| `fig` | `{file: img.svg, caption: "...", alt: "...", width: "100%"}` | SVG or raster figure |
+| `table` | `{head: [...], rows: [[...]], caption: "..."}` | comparison or reference table |
+| `note` | `{title: "Specific concept", text: "..."}` | content-specific caution or clarification |
+| `tip` | `{title: "Specific concept", text: "..."}` | content-specific useful observation |
+| `work` | `{title: "...", steps: [...]}` | worked example or derivation |
+| `code` | `{file: a.c, lang: c}` or `{text: "...", lang: c}` | source listing or concise snippet |
+| `algo` | `{title: "...", steps: [...]}` | meaningful ordered algorithm steps |
 
-`h2`, `h3` take a plain string. `text` in `note`/`tip` and every string inside
-`pts`/`work` accepts the inline forms below.
+`theory.paragraphs` and `theory.points` are lists of strings, not nested blocks;
+omit either when unused. Quick may use these or `pts` to carry selected key points.
+Do not automatically add paragraphs, function listings or complexity fields to
+fill a template. For `note`, `tip` and `work`, use a genuine content-specific title
+when useful. Generic semantic headings are not printed in PaperX.
 
-### `qa`
+### Inline markup and equations
 
-```yaml
-- qa:
-    num: 4                 # optional - the tool numbers items in document order
-    star: true             # optional - revision-priority star
-    q:                     # one or more equivalent wordings
-      - Why does round robin keep the queue fair?
-      - Explain how round robin guarantees every process a turn.
-    a: >
-      Every ready process is served in **FIFO order** with a bounded
-      **time quantum**, so the longest wait is the number of ready
-      processes times the quantum.
-    kw: [FIFO order, time quantum]   # bolded in the answer; ** ** also works
-```
-
-`q` may be a bare string when there is one wording. `kw` wraps the first
-occurrence of each term in the answer; a term not found is reported.
-
-**Code-lab item.** Give `file` (or `code.text`) instead of `a`; optional `out`
-prints an "Expected output" card under the program, and `lang` sets the tag.
-
-```yaml
-- qa:
-    q: Write a program that forks and prints from both processes.
-    file: fork_demo.c
-    lang: c
-```
-
-**Algorithm item.** Give `algo` instead of `a`; the card becomes the answer.
-
-```yaml
-- qa:
-    q: State the steps fork() takes inside the kernel.
-    algo:
-      pin: Fork
-      title: Creating a process
-      steps:
-        - Call fork(); the kernel copies the address space.
-        - Check the return value.
-      cx: O(1) system call
-```
-
-### `code`
-
-`file` is resolved against the content file's directory, then `<dir>/code/`.
-A file not found is an error, not a silent skip. `text` inlines the listing.
-
-```yaml
-- code:
-    file: array_operations.c
-    lang: c
-    cx: Time complexity · O(n) scan · O(1) extra space
-```
-
-### `algo`
-
-Steps get `Step 1: Start` / `Step N: Stop` bookends and are renumbered
-automatically, with `Step 3` references inside the text bumped to match. A
-listing that contains braces or semicolons is treated as code, not an algorithm,
-and is left alone.
-
-```yaml
-- algo:
-    pin: Traversal
-    title: TRAVERSING AN ARRAY
-    steps:
-      - "[INITIALIZE] SET I = lower_bound"
-      - Repeat Steps 1 and 2 until I = upper_bound.
-    cx: O(n) time · O(1) extra space
-```
-
-## Inline markup
-
-Available in every prose string, plus `table` cells and captions:
+Prose strings, table cells and captions accept:
 
 | Syntax | Result |
 |---|---|
-| `**term**` | bold accent keyword |
-| `` `code` `` | monospace |
+| `**term**` | meaningful emphasis |
+| `` `code` `` | inline code |
 | `*emphasis*` | italic |
-| `$O(n \log n)$` | inline maths, rendered to SVG |
+| `$O(n \log n)$` | inline mathematics rendered as SVG |
 
-Display maths goes in a `math` item, not inline.
-
-## Guide types and what they allow
-
-The tool rejects a block the chosen type does not carry, before rendering:
-
-| Type | Sections may contain |
-|---|---|
-| `default` | `p pts h2 h3 math fig table note tip algo work code fn` |
-| `qna` | `p pts h2 h3 math fig table note tip qa` |
-| `code` | `p pts h2 h3 math fig table note tip algo code fn` |
-
-`textbook` and `walkthrough` are accepted as aliases for `default`, and `qa` for
-`qna`, so older content files keep building.
-
-Pass `--lax` to downgrade those to warnings. Depth is not enforced the same
-way — a long paragraph in quick mode is reported, not rejected.
-
-### `fn` — the code guide's unit
+Use a `math` block for display equations. Single-quote TeX in YAML so backslashes
+are preserved rather than interpreted as YAML escape sequences:
 
 ```yaml
-- fn:
-    name: sort_ints
-    sig: "void sort_ints(int *a, size_t n)"
-    does: >
-      Sorts n integers in place, ascending, using an iterative merge sort so the
-      stack depth stays constant.
-    args:
-      - {name: a, type: "int *", desc: The array to sort, holding at least `n` elements.}
-      - {name: n, type: size_t, desc: Element count; 0 and 1 return immediately.}
-    returns: Nothing. The array is sorted in place.
-    notes:
-      - Stable, so equal keys keep their original order.
-    cx: "Time complexity · O(n log n) all cases · O(n) extra space"
-    code:
-      text: |
-        void sort_ints(int *a, size_t n) { ... }
-      lang: c
+- math:
+    tex: 'E_s = \frac{\Delta Q_s}{\Delta P}\frac{P}{Q_s}'
 ```
 
-`name` and `does` are the two that matter everywhere; `sig`, `args`, `returns`,
-`notes`, `cx` and `code` fill in around them. An argument can be a bare string
-when it needs no type column.
+### Code and algorithms
 
-In **quick** mode `fn` keeps the signature, the description, the parameters and the
-return value, and drops the body listing and the notes — the interface without the
-implementation. In **full** mode the body is expected: the tool warns about a
-function with no listing.
+Code appears when the source contains it or the concept needs it. The same block
+can carry a complete program in full mode or a concise, accurate snippet in quick
+mode; mode does not automatically strip code. `file` resolves from the content
+file's directory, with its `code/` directory as a fallback. Missing files are errors.
 
-`code.text`, `code.file` and `code.lang` work exactly as they do for a top-level
-`code` item. A nested listing's line limit is 95 characters rather than 105, because
-the fn indent narrows the card.
+```yaml
+- code:
+    text: |
+      total = sum(values)
+      mean = total / len(values)
+    lang: python
+- algo:
+    title: Binary search
+    steps:
+      - Compare the target with the middle value of the sorted interval.
+      - If equal, return its position.
+      - Otherwise continue in the half that can contain the target.
+      - If the interval becomes empty, report that the target is absent.
+```
 
-Put the complexity line at the `fn` level, not inside `code` — a `cx` under `code` is
-dropped, since the function's own line is the one that matters. `file` is resolved against the content file's directory, then
-`<dir>/code/`.
+For numbered natural-language procedures in the body typeface, set `algo.format: prose`.
+Omit this option to retain the existing compact algorithm card typography.
 
-## What the tool checks
+Keep code behaviour and algorithm order faithful to the source. Do not insert
+automatic Start/Stop bookends, force a function inventory, or require complexity
+lines on every listing. Include a complexity fact in topic prose when it helps.
+Validate runnable examples in the available runtime and report verification limits.
 
-Runs on every build unless `--no-check`:
+### Figures
 
-- **Sparse pages** — under 72% full, excluding cover, contents and last page.
-- **Margin seams** — a step between the margin and the content box, which is
-  what the `@page` background bug looks like. Verified to catch a deliberately
-  broken stylesheet.
-- **Leaked markup** — escaped HTML entities, `None`, `Traceback`, raw LaTeX
-  commands, and unrendered `$…$` with TeX inside.
-- **Fonts** — warns if no bundled face reached page 1.
+```yaml
+- fig:
+    file: assets/demand.svg
+    caption: Movement along a demand curve versus a shift of the curve.
+    alt: Two price–quantity panels contrasting own-price movement with a change in demand.
+    width: 100%
+```
 
-## Figures
+`file` resolves from the content file's directory. The renderer copies assets with
+collision-safe names, so different chapters can use different images with the
+same basename. `alt` defaults to the caption. `width` is a percentage or millimetre
+length such as `100%`, `75%`, or `140mm`. PaperX defaults to `100%`; Paper and
+Obsidian retain natural sizing constrained to the text column when width is
+omitted. Size figures for legibility, not just to fit them onto a page.
 
-`fig.file` is copied into the build directory and referenced by name, so the
-path in the content file only has to resolve from the content file's directory.
-Screenshots keep their own background and colour — do not recolour a diagram to
-match a dark theme.
+For a detailed portrait diagram, `fig.max_height: 180mm` overrides the default
+94mm height cap without changing its aspect ratio. Use a positive millimetre
+length up to 230mm; leave room for the caption. Split combined diagrams into
+separate figures when that makes their source labels easier to read.
+
+Paper and Obsidian keep in-scope source diagram screenshots and their original
+backgrounds/colours. PaperX redraws instructional figures, preferably as static,
+self-contained SVG with explicit dimensions and viewBox. Preserve source labels,
+values, axes, units, shapes, relative layout and connections. Follow the source
+geometry and timing-waveform verification rules in [references/paperx.md](references/paperx.md).
+Figure-generation code is allowed; custom
+per-guide PDF renderers and arbitrary chapter HTML are not the content interface.
+Do not rely on remote assets or browser JavaScript. Label schematic figures where
+appropriate and never invent empirical data. A photo or other intrinsically
+visual evidence can keep its source image when redrawing would change its meaning;
+record that exception internally.
+
+## Chapter assembly
+
+For multi-chapter PaperX, chapter workers write separate files with `sections: [...]`.
+Their figure/code paths are relative to their own chapter file. The main agent
+defines global settings and order in a manifest:
+
+```yaml
+# manifest.yaml
+meta:
+  title: Economics and Management
+theme: paperx
+mode: quick
+chapters:
+  - chapters/economics/chapter.yaml
+  - chapters/management/chapter.yaml
+```
+
+```bash
+python assemble.py manifest.yaml -o guide.yaml
+python build.py guide.yaml --theme paperx --mode quick
+```
+
+Chapter paths resolve from the manifest. The assembler preserves their order and
+writes one canonical YAML file with absolute figure/code references. Keep assets
+available until rendering; assembled YAML is not an asset archive. The main agent
+reviews chapter content and selection/coverage before assembly, then checks the
+global contents, numbering, pagination and figures in the final PDF. Workers do
+not produce final PDFs or contents tables.
+
+## Migration
+
+Old top-level `type` and `depth` settings and their `--type`/`--depth` flags are
+rejected. Choose `mode: full` or `mode: quick` and rewrite content accordingly.
+There are no hidden guide-type aliases. Removed `qa`, `qna`, `question`, `answer`,
+`fn`, `function`, `explain`, and `exam` blocks must become topic prose, pointers,
+figures, tables or code where needed. Do not preserve question/answer labels,
+likely stars, exam frames or boilerplate instructions in replacement text.
+
+## Verification
+
+Build diagnostics check sparse pages, margin seams, leaked markup and bundled
+fonts. Review warnings rather than bypassing them. Visually inspect the rendered
+PDF for correct contents destinations, readable formulas/figures, missing assets,
+clipped tables or code, orphaned headings and avoidable empty areas. Contents and
+the final page can naturally be short. Neither mode nor a successful render
+establishes source accuracy or coverage; those remain authoring checks.

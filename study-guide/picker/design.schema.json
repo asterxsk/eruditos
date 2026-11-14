@@ -14,12 +14,12 @@
       "const": 1
     },
     "name": {
-      "type": "string",
+      "enum": ["paper", "paperx", "obsidian"],
       "minLength": 1,
       "description": "Preset name. Present in the library, absent in a per-guide config."
     },
     "basedOn": {
-      "type": "string",
+      "enum": ["paper", "paperx", "obsidian"],
       "minLength": 1,
       "description": "Name of the library preset this config starts from. Absent in library presets themselves."
     },
@@ -52,11 +52,8 @@
           "properties": {
             "preset": {
               "enum": [
-                "cobalt",
                 "paper",
-                "sepia",
-                "ice",
-                "mono"
+                "paperx"
               ]
             }
           },
@@ -139,7 +136,7 @@
     "fonts": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Role mapping. Weight is fixed per role (see the bundled manifest); only family and size are chosen. 'label' controls every small label — unit tag, callout head, table header, caption, footer — and defaults to the bundled serif italic. It is not a free choice: labels are serif italic, sentence case, untracked.",
+      "description": "Role mapping using the bundled manifest. Paper and Obsidian labels default to serif italic, sentence case and untracked. PaperX uses compact sans-serif semantic labels; its layout-specific sizing lives in base.css.",
       "properties": {
         "heading": {
           "$ref": "#/$defs/fontRole"
@@ -213,7 +210,7 @@
         },
         "size": {
           "type": "number",
-          "minimum": 7,
+          "minimum": 6,
           "maximum": 72,
           "description": "Base size in points for the role; the layout preset scales it."
         }

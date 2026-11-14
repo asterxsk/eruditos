@@ -22,7 +22,7 @@ body {
 }
 
 /* ---------------------------------------------------------------- labels
- * ONE label style for the whole guide, and it is not a tracked mono capital.
+ * Paper/Obsidian label style. PaperX overrides this in its scoped rules below.
  * Tracked uppercase monospace above a serif heading is the single strongest
  * "generated document" tell: it reads as a UI chip pasted onto a page. Every
  * label here — unit tag, callout head, worked-example head, table header,
@@ -57,35 +57,18 @@ p { margin: 0 0 4.6pt 0; }
 
 .unitbreak { page-break-before: always; }
 
-/* The contents gets its own page: cover = 1, contents = 2. Without the leading
-   break the cover and the contents share page 1 and the last couple of rows
-   spill onto a near-empty page of their own. */
-.contents  { page-break-before: always; page-break-after: always; }
+/* Contents is the opening page in every theme and ends before the topics. */
+.contents  { page-break-before: auto; page-break-after: always; }
 /* Ten or so rows at the full unit opening spill the last one or two onto a
    near-empty sheet. The contents page has no body text under the head, so it
    can afford a tighter opening than a real unit. */
 .contents .unit-head { padding-top: 4mm; margin-bottom: 4mm; }
 .contents .unit-head h1 { font-size: 21pt; }
-/* ------------------------------------------------------------------ cover */
-/* The cover carries a title, a subtitle and the terminal block that says what
-   the guide is. No unit rule above it — that hairline opens a unit, and the
-   cover is not one. Tracking appears here and nowhere else in the document. */
-.cover  { padding-top: calc(46mm * var(--rhythm, 1.15)); }
-.cover .cover-tag   { color: var(--faint, #5d6672); display: block; margin-bottom: 2mm; }
-.cover h1.cover-title {
-  font-size: 34pt; letter-spacing: -0.7px; line-height: 1.08;
-  color: var(--strong, #fff); margin: 0;
-}
-.cover .cover-sub   { color: var(--dim, #8f98a6); font-size: 11pt; margin-top: 4.5mm; max-width: 132mm; }
-.term {
-  margin-top: 16mm; padding: 4.6mm 5mm; border-radius: 4px;
-  background: var(--code-fill, #0a0d12); border: 1px solid var(--rule-strong, rgba(255,255,255,0.11));
-  font-family: var(--font-code); font-size: 8pt; line-height: 1.72;
-  color: var(--code-text, #cfd6de); page-break-inside: avoid;
-}
-.term .ln { display: block; page-break-inside: avoid; }
-.term .cmd::before { content: "$ "; color: var(--accent, #79c0ff); }
-.term .dim { color: var(--faint, #5d6672); }
+.contents > h1 { font-size: 24pt; margin-bottom: 8mm; }
+.contents-item.chapter { padding-top: 5mm; break-after: avoid; }
+.contents-item.chapter a.toc .t { font-weight: 700; }
+.contents + .unit { margin-top: 0; }
+.topic-num { color: var(--accent); }
 
 .unit      { margin-top: calc(15mm * var(--rhythm, 1.15)); }
 
@@ -146,6 +129,14 @@ h3.sub {
 }
 .card-b .step, .card-b .cont { display: block; page-break-inside: avoid; }
 .card-b .num { color: var(--accent, #79c0ff); }
+.card.prose .card-b {
+  font-family: var(--font-body); font-size: 9.5pt;
+  line-height: 1.4; white-space: normal;
+}
+.algorithm-steps { margin: 0; padding-left: 15pt; }
+.algorithm-steps li { margin: 0 0 5pt; break-inside: avoid; }
+.algorithm-steps li:last-child { margin-bottom: 0; }
+.card.prose .cx { font-family: var(--font-body); padding: 5pt 8pt; margin: 0; }
 
 /* Code card — a file listing. The window chrome is meaningful here. */
 .code {
@@ -240,57 +231,6 @@ ul.pts li::before {
 }
 ul.pts .keyword { color: var(--accent, #79c0ff); font-weight: 700; }
 
-/* ------------------------------------------------- function explanations */
-/* The code guide's unit of content: one function, explained. Open like .work —
-   a dim left rule and space, no box — because the explanation is prose. The
-   only fenced thing inside is the body listing, and that is a .code card, which
-   already says "this is a program" by looking like one. */
-.fn {
-  margin: 0 0 calc(7mm * var(--rhythm, 1.15)) 0; padding: 0 0 0 5mm;
-  border-left: 2px solid var(--dim-soft, rgba(150,160,175,0.40));
-  page-break-inside: auto;              /* a long function can flow, a short one stays */
-}
-.fn-h {
-  font-family: var(--font-heading); font-weight: 600; font-size: 11.4pt;
-  color: var(--strong, #dfe5ec); page-break-after: avoid;
-}
-/* The signature is code, so it is set in the code face — but at body size, not
-   the 7.5pt of a listing, because it is being read as a sentence about the
-   function rather than copied. */
-.fn-sig {
-  font-family: var(--font-code); font-size: 8.4pt; line-height: 1.5;
-  color: var(--accent, #79c0ff); margin-top: 1.6mm;
-  white-space: pre-wrap; page-break-inside: avoid; page-break-after: avoid;
-}
-.fn-does { margin: 2.6mm 0 0 0; font-size: 9.8pt; color: var(--text, #b6bfca); }
-.fn-sub {
-  font-family: var(--font-label, var(--font-heading)); font-style: italic;
-  font-size: var(--label-size); color: var(--dim, #8f98a6);
-  margin: 3.6mm 0 1.4mm 0; page-break-after: avoid;
-}
-/* Hanging label/value rows: the name column is fixed so the descriptions line
-   up down the block, which is what makes a parameter list scannable. */
-.fn-args { page-break-inside: avoid; }
-.fn-arg { display: flex; gap: 3mm; margin: 0 0 1.4mm 0; page-break-inside: avoid; }
-.fn-arg-n {
-  flex: 0 0 34mm; font-family: var(--font-code); font-size: 8pt;
-  color: var(--dim, #a8b2be); white-space: normal;
-}
-.fn-type {
-  font-family: var(--font-code); font-size: 7.2pt; color: var(--faint, #5d6672);
-  margin-left: 1.4mm;
-}
-.fn-arg-d { flex: 1 1 auto; font-size: 9.4pt; color: var(--text, #b6bfca); }
-.fn-ret { font-size: 9.8pt; color: var(--text, #b6bfca); margin-top: 3.6mm; }
-.fn-ret .fn-sub { display: block; margin: 0 0 1mm 0; }
-/* ul.pts sets its own margin-top (0), and (0,1,1) outranks a bare .fn-notes,
-   so the selector has to carry the list element to land at all. */
-.fn ul.pts.fn-notes { margin-top: 3.6mm; }
-.fn .code { margin-top: 3.6mm; margin-bottom: 0; }
-/* A complexity line inside the code card is the card's flush footer (`.code .cx`
-   zeroes its margin). This rule is for the function's own line, which sits
-   below the card and needs air. */
-.fn > .cx { margin-top: 3.4mm; }
 
 /* ------------------------------------------------------------- equations */
 .eq { text-align: center; margin: 7mm 0; page-break-inside: avoid; }
@@ -304,7 +244,7 @@ span.imath { vertical-align: -0.32ex; }
    keeps it on the baseline at the size of the surrounding text, in a card as
    well as a paragraph. */
 span.imath svg { height: 1.15em; width: auto; vertical-align: -0.32ex; }
-.qa .a span.imath svg, .card-b span.imath svg, .work-b span.imath svg { height: 1.2em; }
+.card-b span.imath svg, .work-b span.imath svg { height: 1.2em; }
 
 /* --------------------------------------------------------------- figures */
 /* A diagram of the kind the source itself carries: a curve, a schedule or a
@@ -336,27 +276,6 @@ table.data tr { page-break-inside: avoid; }
   margin: -3.4mm 0 5mm 0; line-height: 1.5;
 }
 
-/* ------------------------------------------------------------------- q&a */
-/* No rule under each item: the unit's opening rule is the only divider in the
-   document. Seventy hairlines read as a form; space separates the items. */
-.qa {
-  padding: 3.4mm 0; margin-bottom: calc(5.5mm * var(--rhythm, 1.15)); page-break-inside: avoid;
-}
-.qa .q { font-family: var(--font-heading); font-weight: 500; font-size: 9.6pt; color: var(--strong, #dfe5ec); margin-bottom: 1.6mm; }
-.qa .a { font-size: 9.6pt; color: var(--text, #b6bfca); }
-.qa .a code { font-family: var(--font-code); font-size: 8.5pt; color: var(--accent, #9dc1e0); }
-/* Three equivalent prompts share one number and one model answer. */
-.qa .qa-num {
-  font-family: var(--font-heading); font-weight: 600; font-size: 11pt;
-  color: var(--strong, #dfe5ec); margin-bottom: 3mm; page-break-after: avoid;
-}
-.qa .qa-star {
-  font-family: var(--font-code); color: var(--accent, #79c0ff); margin-left: 2mm;
-}
-.qa .q { page-break-after: avoid; }
-.qa .a { margin-top: 3mm; }
-.qa .a .keyword { color: var(--accent, #79c0ff); font-weight: 700; }
-.qa.qa-long { page-break-inside: auto; }
 
 
 /* ------------------------------------------------------------- contents */
@@ -380,7 +299,7 @@ a.toc .d { display: block; margin-left: 11mm; color: var(--faint, #5d6672); }
 .end { margin-top: 12mm; padding: 10mm 0 0 0; border-top: 1px solid var(--rule-strong, rgba(255,255,255,0.10)); }
 
 /* ------------------------------------------------------------ break rules */
-.qa, .contents-item              { page-break-inside: avoid; }
+.contents-item                  { page-break-inside: avoid; }
 .card-b .step, .work-b span.cont { page-break-inside: avoid; }
 .eq                              { page-break-inside: avoid; }
 table.data tr                    { page-break-inside: avoid; }
@@ -400,3 +319,68 @@ p, li                            { orphans: 2; widows: 2; }
 .o, .ow                 { color: var(--code-text); }
 .p                      { color: #8b95a1; }
 .err                    { color: #f07171; }
+
+/* These semantic blocks also work in Paper and Obsidian. */
+.theory ul { padding-left: 15pt; }
+
+/* PaperX deliberately follows the reference's compact semantic typography.
+   Its 2pt left rules are heavier than the prototype's original hairlines. */
+body[data-theme="paperx"] { font-size: 9.5pt; line-height: 1.37; }
+body[data-theme="paperx"] p { margin: 0 0 5pt; }
+body[data-theme="paperx"] p:last-child { margin-bottom: 0; }
+body[data-theme="paperx"] .keyword { color: #171717; }
+body[data-theme="paperx"] .contents { break-before: auto; break-after: page; }
+body[data-theme="paperx"] .contents h1 { font-size: 24pt; margin-bottom: 22pt; }
+body[data-theme="paperx"] .contents-item { padding: 8pt 0; border-bottom: .5pt solid #ddd; }
+body[data-theme="paperx"] .contents-item.chapter { padding-top: 20pt; border-bottom: none; break-after: avoid; }
+body[data-theme="paperx"] a.toc { display: block; }
+body[data-theme="paperx"] a.toc .t { font-family: var(--font-heading); font-size: 9.5pt; font-weight: 400; }
+body[data-theme="paperx"] .chapter a.toc .t { font-size: 12pt; font-weight: 700; }
+body[data-theme="paperx"] a.toc .n { font-family: var(--font-heading); width: 23pt; color: #1767c7; }
+body[data-theme="paperx"] a.toc::after { font-family: var(--font-heading); color: #171717; font-weight: 700; font-size: 9.5pt; }
+body[data-theme="paperx"] .unit { margin-top: 14pt; }
+body[data-theme="paperx"] .contents + .unit { margin-top: 0; }
+body[data-theme="paperx"] .unit-head { border: .6pt solid #999; border-left: 3pt solid #237ae5; padding: 7pt 9pt; margin-bottom: 12pt; }
+body[data-theme="paperx"] .unit-head h1 { font-size: 16pt; font-weight: 700; margin: 4pt 0 0; }
+body[data-theme="paperx"] .unit-head .blurb { font: 8pt/1.3 var(--font-heading); margin-top: 5pt; }
+body[data-theme="paperx"] .unit-tag,
+body[data-theme="paperx"] .px-label { font-family: var(--font-heading); font-size: 6.4pt; font-style: normal; font-weight: 700; letter-spacing: .65pt; text-transform: uppercase; margin-bottom: 6pt; color: #125db6; break-after: avoid; }
+body[data-theme="paperx"] h2.sec { font-size: 11.5pt; font-weight: 700; line-height: 1.2; border: none; border-left: 2pt solid #252525; background: #f8f8f7; padding: 3pt 7pt; margin: 10pt 0 9pt; }
+body[data-theme="paperx"] .topic-num { color: #1767c7; }
+body[data-theme="paperx"] h3.sub { font-size: 9.5pt; margin: 8pt 0 5pt; color: #171717; }
+body[data-theme="paperx"] .px-block { margin: 0 0 10pt; padding: 6pt 8pt; border-left: 2pt solid; box-decoration-break: clone; }
+body[data-theme="paperx"] .px-theory,
+body[data-theme="paperx"] .px-p,
+body[data-theme="paperx"] .px-pts { border-color: #237ae5; background: #f8faff; }
+body[data-theme="paperx"] .theory ul { margin: 4pt 0; padding-left: 14pt; }
+body[data-theme="paperx"] .theory li { margin-bottom: 3pt; }
+body[data-theme="paperx"] ul.pts { margin: 0; }
+body[data-theme="paperx"] ul.pts li { font-size: 9.5pt; line-height: 1.37; margin-bottom: 4pt; }
+body[data-theme="paperx"] .px-fig { border-color: #00976a; break-inside: avoid; }
+body[data-theme="paperx"] .px-fig .px-label { color: #00734e; }
+body[data-theme="paperx"] .fig { margin: 0; }
+body[data-theme="paperx"] .fig img { width: 100%; }
+body[data-theme="paperx"] .fig .figcap { font: 7pt/1.35 var(--font-heading); color: #555; text-align: center; margin-top: 5pt; }
+body[data-theme="paperx"] .px-math { border-color: #d45a2c; background: #fcf1ec; break-inside: avoid; }
+body[data-theme="paperx"] .px-math .px-label { color: #b14722; }
+body[data-theme="paperx"] .eq { margin: 7pt 0; font-size: 14pt; }
+body[data-theme="paperx"] .eq > svg { max-width: 100%; height: auto; }
+body[data-theme="paperx"] .px-table { border-color: #7752c8; padding-top: 2pt; padding-bottom: 0; }
+body[data-theme="paperx"] .px-table .px-label { color: #6340ae; }
+body[data-theme="paperx"] table.data { font: 8pt/1.3 var(--font-heading); margin-bottom: 0; }
+body[data-theme="paperx"] table.data th,
+body[data-theme="paperx"] table.data td { padding: 4pt 5pt; border-bottom: .45pt solid #bbb; color: #171717; }
+body[data-theme="paperx"] table.data th { font: 700 8pt/1.3 var(--font-heading); letter-spacing: 0; text-transform: none; background: #f0edfc; }
+body[data-theme="paperx"] .cap { font: 7pt/1.35 var(--font-heading); margin: 5pt 0; }
+body[data-theme="paperx"] .px-note,
+body[data-theme="paperx"] .px-tip { border-color: #bc8509; background: #fff8df; }
+body[data-theme="paperx"] .px-note .px-label,
+body[data-theme="paperx"] .px-tip .px-label { color: #876000; }
+body[data-theme="paperx"] .note,
+body[data-theme="paperx"] .tip { padding: 0; border: none; background: none; margin: 0; }
+body[data-theme="paperx"] .note p,
+body[data-theme="paperx"] .tip p { font-size: 9.5pt; }
+body[data-theme="paperx"] .nt { font: 700 8pt var(--font-heading); color: #171717; margin-bottom: 4pt; }
+body[data-theme="paperx"] .work { border-left-width: 2pt; }
+body[data-theme="paperx"] .code,
+body[data-theme="paperx"] .card { border-left-width: 2pt; }

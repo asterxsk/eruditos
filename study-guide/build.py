@@ -4,7 +4,7 @@ The agent writes one YAML (or JSON) content file. This tool owns everything
 else: the theme assets, every block renderer, the maths, the contents page, the
 PDF, and the delivery checks. There is no per-guide Python to write.
 
-    python build.py guide.yaml --theme cobalt --type qa --depth quick
+    python build.py guide.yaml --theme paper --mode quick
 
 Content file shape: see CONTENT-FORMAT.md next to this file, or run
 `python build.py --example` to print a working sample.
@@ -14,12 +14,14 @@ from __future__ import annotations
 
 import argparse
 import html
+import hashlib
 import json
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -28,39 +30,12 @@ sys.path.insert(0, str(PICKER))
 
 import theme as themes  # noqa: E402  (needs PICKER on sys.path)
 
-THEMES = ("dark", "graphite", "cobalt", "obsidian", "paper", "sepia", "ice", "mono")
-TYPES = ("default", "qna", "code")
-DEPTHS = ("full", "quick")
-
-# The three guide types. The old names still parse so an existing content file
-# does not break, but they normalise to one of these before anything renders.
-ALIASES = {
-    "textbook": "default",
-    "walkthrough": "default",
-    "qa": "qna",
-    "q&a": "qna",
-    "questions": "qna",
-}
-
-# Blocks each type may carry. `default` is the general guide and takes
-# everything except the question bank. `qna` is the question bank, nothing else.
-# `code` is a listing explained function by function, so `fn` is expected there
-# rather than merely allowed.
-ALLOWED = {
-    "default": {"h2", "h3", "p", "pts", "math", "fig", "table", "note", "tip",
-                "algo", "work", "code", "fn"},
-    "qna": {"h2", "h3", "p", "pts", "math", "fig", "table", "note", "tip", "qa"},
-    "code": {"h2", "h3", "p", "pts", "math", "fig", "table", "note", "tip",
-             "algo", "code", "fn"},
-}
-# A guide of this type with none of these blocks is probably mislabelled.
-EXPECTED = {"qna": ("qa",), "code": ("code", "algo", "fn")}
+THEMES = ("paper", "paperx", "obsidian")
+MODES = ("full", "quick")
+BLOCKS = {"h2", "h3", "p", "pts", "math", "fig", "table", "note", "tip",
+          "theory", "algo", "work", "code"}
 
 MAX_CODE_LINE = 105       # 7.5pt DejaVu Mono in 180mm of text column
-# A code card inside `.fn` sits behind a 5mm left rule and loses the same width
-# from its own content box, so its lines have to be shorter. Measured: 105 chars
-# overflows that card by about 40px at 7.5pt, 95 fits with room to spare.
-NESTED_CODE_LINE = 95
 QUICK_PARA_LIMIT = 420    # a quick-mode paragraph longer than this is prose
 
 
@@ -106,8 +81,9 @@ def setting(content: dict, cli_value, key: str, default=None):
 class Math:
     """Collects display and inline TeX and renders it to SVG in one batch."""
 
-    def __init__(self, colour: str):
+    def __init__(self, colour: str, display_size: float = 11.0):
         self.colour = colour
+        self.display_size = display_size
         self.jobs: list[tuple[str, bool]] = []     # (tex, display)
         self.cache: dict[tuple[str, bool], str] = {}
 
@@ -188,7 +164,7 @@ class Math:
             tmp = Path(tempfile.mkdtemp()) / "eq.svg"
             try:
                 mathtext.math_to_image(
-                    f"${tex}$", str(tmp), prop=FontProperties(size=11.0 if display else 10.2),
+                    f"${tex}$", str(tmp), prop=FontProperties(size=self.display_size if display else 10.2),
                     format="svg", dpi=300, color=self.colour,
                 )
             except ValueError:
@@ -263,7 +239,7 @@ for (const j of JSON.parse(fs.readFileSync(process.argv[2], 'utf8'))) {
 # Emphasis needs non-space on both sides of its markers. Without that, a C
 # signature like `struct task *pick_next(struct rq *q)` parses as an emphasis
 # span from the first `*` to the second, and `int **p` parses as a bold
-# keyword - both in the one field (fn.sig) that is code, not prose.
+# keyword. Code listings bypass this prose parser.
 INLINE = re.compile(
     r"(`[^`]+`|\*\*(?!\s)[^*\n]+?(?<!\s)\*\*|\$[^$]+\$|\*(?!\s)[^*\n]+?(?<!\s)\*)"
 )
@@ -275,13 +251,8 @@ KIND_ALIASES = {
     "para": "p",
     "point": "pts",
     "points": "pts",
-    "function": "fn",
-    "explain": "fn",
     "algorithms": "algo",
     "figures": "fig",
-    "qna": "qa",
-    "question": "qa",
-    "answer": "qa",
 }
 
 
@@ -309,22 +280,6 @@ def inline(text: str, math: Math) -> str:
     return "".join(out)
 
 
-def keywordise(text: str, keywords) -> str:
-    """Wrap the first occurrence of each marking keyword in ** ** for the parser."""
-    if not keywords:
-        return text
-    if isinstance(keywords, str):
-        keywords = [keywords]
-    for kw in keywords:
-        if not kw:
-            continue
-        if f"**{kw}**" in text:
-            continue
-        pattern = re.compile(rf"(?<![\w*]){re.escape(str(kw))}(?![\w*])")
-        text, n = pattern.subn(f"**{kw}**", text, count=1)
-        if n == 0:
-            print(f"  keyword not found in answer: {kw!r}", file=sys.stderr)
-    return text
 
 
 # --------------------------------------------------------------------------- #
@@ -372,7 +327,7 @@ def code_body(item: dict, base: Path) -> str:
 
 def code_card(item: dict, base: Path, math: Math, label: str | None = None,
               limit: int = MAX_CODE_LINE) -> str:
-    name = label or item.get("file") or item.get("title") or item.get("lang") or "listing"
+    name = label or item.get("title") or (Path(item["file"]).name if item.get("file") else None) or item.get("lang") or "listing"
     lang = item.get("lang") or ""
     body = code_body(item, base)
     lines = body.splitlines() or [""]
@@ -398,129 +353,69 @@ def code_card(item: dict, base: Path, math: Math, label: str | None = None,
 # --------------------------------------------------------------------------- #
 # algorithms
 # --------------------------------------------------------------------------- #
-STEP_REF = re.compile(r"[Ss]teps? \d+(?:\s+(?:and|to)\s+\d+)*")
-STEP_LEAD = re.compile(r"^\s*Step\s+\d+\s*[:.)-]\s*", re.I)
 
 
-def bump_refs(text: str, offset: int) -> str:
-    def rep(m):
-        return re.sub(r"\d+", lambda d: str(int(d.group(0)) + offset), m.group(0))
-    return STEP_REF.sub(rep, text)
 
 
-def algo_steps(steps) -> list[str]:
-    """Strip any source numbering, add the Start/Stop bookends, bump references."""
-    if isinstance(steps, str):
-        steps = [s for s in steps.splitlines() if s.strip()]
-    steps = [STEP_LEAD.sub("", str(s)).strip() for s in steps if str(s).strip()]
-    if not steps:
-        return []
-    # A pure code listing is not an algorithm: no bookends, no renumbering.
-    if any(any(ch in s for ch in "{};") for s in steps):
-        return steps
-    bookended = (steps[0].lower().startswith("start")
-                 and steps[-1].lower().startswith("stop"))
-    if bookended:
-        body = steps[1:-1]
-        return ["Step 1: Start"] + [f"Step {i}: {s}" for i, s in enumerate(body, 2)] + \
-               [f"Step {len(body) + 2}: Stop"]
-    body = [bump_refs(s, 1) for s in steps]
-    return (["Step 1: Start"]
-            + [f"Step {i}: {s}" for i, s in enumerate(body, 2)]
-            + [f"Step {len(body) + 2}: Stop"])
 
 
 def algo_card(item: dict, math: Math) -> str:
-    pin = item.get("pin") or "Algorithm"
+    pin = item.get("pin") or ""
     title = item.get("title") or ""
-    steps = algo_steps(item.get("steps") or [])
-    body = "".join(f'<span class="step">{inline(s, math)}</span>' for s in steps)
+    steps = item.get("steps") or []
+    if isinstance(steps, str):
+        steps = steps.splitlines()
+    prose = item.get("format") == "prose"
+    if prose:
+        body = '<ol class="algorithm-steps">' + "".join(
+            f'<li>{inline(s, math)}</li>' for s in steps
+        ) + '</ol>'
+    else:
+        body = "".join(f'<span class="step">{inline(s, math)}</span>' for s in steps)
     head = (f'<span class="pill">{html.escape(pin)}</span>{html.escape(title)}'
             if title else f'<span class="pill">{html.escape(pin)}</span>')
     cx = item.get("cx")
     cx_html = f'\n<div class="cx">{inline(cx, math)}</div>' if cx else ""
-    return (f'<div class="card">\n<div class="card-h">{head}</div>\n'
+    head_html = f'<div class="card-h">{head}</div>' if pin or title else ""
+    card_class = "card prose" if prose else "card"
+    return (f'<div class="{card_class}">\n{head_html}\n'
             f'<div class="card-b">{body}</div>{cx_html}\n</div>')
 
 
 # --------------------------------------------------------------------------- #
 # function explanations (the code guide)
 # --------------------------------------------------------------------------- #
-def fn_block(val: dict, math: Math, base: Path, depth: str = "full") -> str:
-    """One function, explained: signature, what it does, arguments, result.
-
-    Open block, not a card: a left rule and space, matching `.work`. The only
-    fenced thing in it is the body listing, because that is real code.
-
-    Quick mode keeps the signature, the one-line description, the parameters
-    and the return value, and drops the body listing and the notes. That is the
-    whole point of quick here: the reader already knows what the body looks like
-    and wants the interface.
-    """
-    name = val.get("name") or ""
-    sig = val.get("sig") or val.get("signature") or ""
-    does = val.get("does") or val.get("description") or ""
-    args = val.get("args") or val.get("params") or []
-    returns = val.get("returns") or val.get("result") or ""
-    notes = val.get("notes") or []
-    cx = val.get("cx")
-    quick = depth == "quick"
-
-    head = f'<div class="fn-h">{html.escape(str(name or "Function"))}</div>'
-    # A signature is code. Escape it whole: a `*` marker is a pointer here, and
-    # running it through inline() turns `int *p` into italics.
-    sig_html = f'<div class="fn-sig">{html.escape(str(sig))}</div>' if sig else ""
-    does_html = f'<p class="fn-does">{inline(does, math)}</p>' if does else ""
-
-    args_html = ""
-    if isinstance(args, str):
-        raise SystemExit(
-            f"fn {name!r}: 'args' must be a list, not a string - a string is "
-            "iterated character by character and renders one row per glyph")
-    if args:
-        rows = []
-        for arg in args:
-            if isinstance(arg, dict):
-                aname = arg.get("name") or ""
-                atype = arg.get("type")
-                adesc = arg.get("desc") or arg.get("description") or ""
-                label = html.escape(str(aname))
-                if atype:
-                    label += f' <span class="fn-type">{html.escape(str(atype))}</span>'
-                rows.append(f'<div class="fn-arg"><span class="fn-arg-n">{label}</span>'
-                            f'<span class="fn-arg-d">{inline(adesc, math)}</span></div>')
-            else:
-                rows.append(f'<div class="fn-arg"><span class="fn-arg-d">{inline(arg, math)}</span></div>')
-        args_html = ('<div class="fn-sub">Parameters</div>'
-                     f'<div class="fn-args">{"".join(rows)}</div>')
-    ret_html = (f'<div class="fn-ret"><span class="fn-sub">Returns</span> '
-                f'{inline(returns, math)}</div>' if returns else "")
-    notes_html = ""
-    if notes and not quick:
-        if isinstance(notes, str):
-            notes = [notes]
-        notes_html = ('<ul class="pts fn-notes">'
-                      + "".join(f"<li>{inline(n, math)}</li>" for n in notes) + "</ul>")
-
-    body_html = ""
-    if not quick and (val.get("code") or val.get("file") or val.get("text")):
-        spec = val.get("code") if isinstance(val.get("code"), dict) else val
-        spec = dict(spec)
-        spec.setdefault("title", name or "listing")
-        # The card must not draw its own complexity line: fn_block emits one for
-        # the whole function below the body, and the copy would print it twice.
-        spec.pop("cx", None)
-        body_html = code_card(spec, base, math, limit=NESTED_CODE_LINE)
-
-    cx_html = f'<div class="cx">{inline(cx, math)}</div>' if cx else ""
-    return (f'<div class="fn{" fn-quick" if quick else ""}">{head}{sig_html}{does_html}'
-            f'{args_html}{ret_html}{notes_html}{body_html}{cx_html}</div>')
 
 
 # --------------------------------------------------------------------------- #
 # blocks
 # --------------------------------------------------------------------------- #
-def render_block(item, math: Math, base: Path, depth: str = "full") -> tuple[str, str]:
+def figure_name(path: Path) -> str:
+    digest = hashlib.sha256(str(path.resolve()).encode("utf-8")).hexdigest()[:16]
+    return digest + path.suffix.lower()
+
+
+def copy_figure(source: Path, dest: Path) -> None:
+    if not source.is_file():
+        raise SystemExit(f"figure not found: {source}")
+    if source.suffix.lower() == ".svg":
+        try:
+            root = ET.parse(source).getroot()
+        except ET.ParseError as exc:
+            raise SystemExit(f"invalid SVG {source}: {exc}") from exc
+        if root.tag.rsplit("}", 1)[-1] != "svg":
+            raise SystemExit(f"not an SVG document: {source}")
+        for node in root.iter():
+            if node.tag.rsplit("}", 1)[-1] in ("script", "foreignObject"):
+                raise SystemExit(f"SVG must be static (no scripts or HTML): {source}")
+            for key, value in node.attrib.items():
+                if key.rsplit("}", 1)[-1] == "href" and not value.startswith(("#", "data:")):
+                    raise SystemExit(f"SVG must embed its resources: {source} references {value!r}")
+    dest.mkdir(exist_ok=True)
+    shutil.copyfile(source, dest / figure_name(source))
+
+
+def render_block(item, math: Math, base: Path, paperx: bool = False) -> tuple[str, str]:
     """Return (block_name, html) for one content item."""
     if isinstance(item, str):
         return "p", f"<p>{inline(item, math)}</p>"
@@ -528,6 +423,20 @@ def render_block(item, math: Math, base: Path, depth: str = "full") -> tuple[str
         raise SystemExit(f"content item must be a single-key mapping, got: {item!r}")
     kind, val = next(iter(item.items()))
     kind = normalise_kind(kind)
+
+    if kind == "theory":
+        if not isinstance(val, dict):
+            raise SystemExit("theory needs a mapping with paragraphs and/or points")
+        parts = []
+        for field in ("paragraphs", "points"):
+            values = val.get(field) or []
+            if not isinstance(values, list) or any(not isinstance(v, str) for v in values):
+                raise SystemExit(f"theory.{field} must be a list of strings")
+            if field == "paragraphs":
+                parts += [f'<p>{inline(v, math)}</p>' for v in values]
+            elif values:
+                parts.append('<ul>' + ''.join(f'<li>{inline(v, math)}</li>' for v in values) + '</ul>')
+        return kind, '<div class="theory">' + ''.join(parts) + '</div>'
 
     if kind == "p":
         return kind, f"<p>{inline(val, math)}</p>"
@@ -548,12 +457,10 @@ def render_block(item, math: Math, base: Path, depth: str = "full") -> tuple[str
         return kind, f'<div class="eq">{math.placeholder(tex, display=True)}{num_html}</div>'
     if kind == "algo":
         return kind, algo_card(val, math)
-    if kind == "fn":
-        return kind, fn_block(val, math, base, depth)
     if kind == "code":
         return kind, code_card(val, base, math)
     if kind == "work":
-        title = val.get("title") or "Worked example"
+        title = val.get("title") or ""
         steps = val.get("steps") or []
         rows = []
         for step in steps:
@@ -562,12 +469,15 @@ def render_block(item, math: Math, base: Path, depth: str = "full") -> tuple[str
                 rows.append(f'<span class="{html.escape(cls)}">{inline(step.get("t", ""), math)}</span>')
             else:
                 rows.append(f'<span class="cont">{inline(step, math)}</span>')
-        return kind, (f'<div class="work"><div class="work-h">{html.escape(str(title))}</div>'
+        title_html = f'<div class="work-h">{html.escape(str(title))}</div>' if title else ""
+        return kind, (f'<div class="work">{title_html}'
                       f'<div class="work-b">{"".join(rows)}</div></div>')
     if kind in ("note", "tip"):
-        title = val.get("title") or ("Note" if kind == "note" else "Tip")
+        title = val.get("title") or ""
         text = val.get("text") or val.get("html") or ""
-        return kind, (f'<div class="{kind}"><div class="nt">{html.escape(str(title))}</div>'
+        generic = str(title).strip().casefold() in ("", "note", "tip", "remember", "remember / exam tip")
+        title_html = "" if generic else f'<div class="nt">{html.escape(str(title))}</div>'
+        return kind, (f'<div class="{kind}">{title_html}'
                       f'<p>{inline(text, math)}</p></div>')
     if kind == "fig":
         src = val.get("file") or val.get("path")
@@ -575,8 +485,24 @@ def render_block(item, math: Math, base: Path, depth: str = "full") -> tuple[str
             raise SystemExit("fig block needs 'file'")
         caption = val.get("caption") or ""
         cap = f'<div class="figcap">{inline(caption, math)}</div>' if caption else ""
-        return kind, (f'<div class="fig"><img src="figs/{html.escape(Path(src).name)}" '
-                      f'alt="{html.escape(caption[:120])}">{cap}</div>')
+        figure_styles = []
+        if "width" in val:
+            width = str(val["width"])
+            match = re.fullmatch(r"(\d+(?:\.\d+)?)(%|mm)", width)
+            if not match or float(match[1]) <= 0 or (match[2] == "%" and float(match[1]) > 100):
+                raise SystemExit("fig.width must be a positive percentage up to 100% or millimetres, e.g. '90%' or '150mm'")
+            figure_styles.append(f"width:{width}")
+        if "max_height" in val:
+            max_height = str(val["max_height"])
+            match = re.fullmatch(r"(\d+(?:\.\d+)?)mm", max_height)
+            if not match or not 0 < float(match[1]) <= 230:
+                raise SystemExit("fig.max_height must be a positive millimetre length up to 230mm")
+            figure_styles.append(f"max-height:{max_height}")
+        style = f' style="{";".join(figure_styles)}"' if figure_styles else ""
+        alt = str(val.get("alt") or caption)
+        target = figure_name(base / src)
+        return kind, (f'<div class="fig"><img src="figs/{target}"{style} '
+                      f'alt="{html.escape(alt)}">{cap}</div>')
     if kind == "table":
         head = val.get("head") or []
         rows = val.get("rows") or []
@@ -589,141 +515,52 @@ def render_block(item, math: Math, base: Path, depth: str = "full") -> tuple[str
         cap = val.get("caption")
         cap_html = f'<div class="cap">{inline(cap, math)}</div>' if cap else ""
         return kind, f'<table class="data">{thead}<tbody>{body}</tbody></table>{cap_html}'
-    if kind == "qa":
-        return kind, qa_block(val, math, base)
     raise SystemExit(f"unknown block type {kind!r}. Blocks: h2 h3 p pts math algo code work "
-                     "fig table note tip qa")
+                     "fig table note tip theory")
 
 
-def qa_block(val: dict, math: Math, base: Path) -> str:
-    num = val.get("num", "")
-    star = ' <span class="qa-star">★</span>' if val.get("star") else ""
-    algo = val.get("algo")
-    lab = bool(val.get("file") or val.get("code") or val.get("out"))
-
-    if algo:
-        # An algorithm answer: the task sentence, then the numbered card.
-        qs = val.get("q") or val.get("questions") or [""]
-        q = qs[0] if isinstance(qs, list) else qs
-        return (f'<div class="qa qa-long">\n<div class="qa-num">{num}{star}</div>\n'
-                f'<p class="q">{inline(q, math)}</p>\n'
-                f'<div class="a">{algo_card(algo, math)}</div>\n</div>')
-
-    if lab:
-        # A code-lab item: one task sentence, then the program and its output.
-        qs = val.get("q") or val.get("questions") or [""]
-        q = qs[0] if isinstance(qs, list) else qs
-        code = dict(val.get("code") or {})
-        if not code:
-            code = {"file": val.get("file"), "lang": val.get("lang"), "cx": val.get("cx")}
-        inner = code_card(code, base, math)
-        if val.get("out"):
-            out_card = (f'<div class="code"><div class="code-h"><span class="dots"><i></i>'
-                        f'<i></i><i></i></span><span class="name">Expected output</span>'
-                        f'<span class="lang">console</span></div>'
-                        f'<pre>{html.escape(str(val["out"]).rstrip())}</pre></div>')
-            inner += "\n" + out_card
-        return (f'<div class="qa qa-long">\n<div class="qa-num">{num}{star}</div>\n'
-                f'<p class="q">{inline(q, math)}</p>\n<div class="a">{inner}</div>\n</div>')
-
-    qs = val.get("q") or val.get("questions") or []
-    if isinstance(qs, str):
-        qs = [qs]
-    asked = "".join(f'<p class="q">Q. {inline(q, math)}</p>\n' for q in qs)
-    answer = keywordise(str(val.get("a") or val.get("answer") or ""), val.get("kw") or val.get("keywords"))
-    long_cls = " qa-long" if len(answer) > 1100 else ""
-    return (f'<div class="qa{long_cls}">\n<div class="qa-num">{num}{star}</div>\n{asked}'
-            f'<div class="a">Ans. {inline(answer, math)}</div>\n</div>')
 
 
 # --------------------------------------------------------------------------- #
 # document
 # --------------------------------------------------------------------------- #
-def cover_html(meta: dict, math: Math) -> str:
-    tag = meta.get("tag") or ""
-    subtitle = meta.get("subtitle") or ""
-    lines = meta.get("terminal") or []
-    term = ""
-    if lines:
-        rows = []
-        for line in lines:
-            if isinstance(line, dict):
-                cmd = html.escape(str(line.get("cmd", "")))
-                note = line.get("note")
-                tail = f' <span class="dim"># {html.escape(str(note))}</span>' if note else ""
-                rows.append(f'<span class="ln cmd">{cmd}{tail}</span>')
-            else:
-                rows.append(f'<span class="ln">{html.escape(str(line))}</span>')
-        term = f'<div class="term">{"".join(rows)}</div>'
-    tag_html = f'<span class="cover-tag">{html.escape(str(tag))}</span>' if tag else ""
-    sub_html = f'<div class="cover-sub">{inline(subtitle, math)}</div>' if subtitle else ""
-    return (f'<section class="cover">\n{tag_html}'
-            f'<h1 class="cover-title">{html.escape(str(meta.get("title", "Study guide")))}</h1>'
-            f'{sub_html}{term}\n</section>')
 
 
 def contents_html(sections: list[dict], meta: dict, math: Math) -> str:
     rows = []
     for i, sec in enumerate(sections, 1):
-        num = str(sec.get("num") or f"{i:02d}")
-        tag = sec.get("tag") or ""
-        title = sec.get("title") or ""
-        blurb = sec.get("blurb") or ""
-        label = f"{tag} · {title}" if tag and title else (title or tag)
-        rows.append(
-            f'<div class="contents-item"><a class="toc" href="#u{num}">'
-            f'<span class="n">{html.escape(num)}</span>'
-            f'<span class="t">{inline(label, math)}</span>'
-            f'<span class="d">{inline(blurb, math)}</span></a></div>'
-        )
-    heading = html.escape(str(meta.get("contents_title") or "Contents"))
-    return ('<section class="contents">\n<div class="unit-head">'
-            '<span class="unit-tag">Index</span>'
-            f'<h1>{heading}</h1>'
-            f'<p class="blurb">{inline(meta.get("contents_blurb", ""), math)}</p>'
-            f'</div>\n{"".join(rows)}\n</section>')
-
-
-def unit_html(sec: dict, i: int, math: Math, base: Path, depth: str = "full") -> str:
-    num = str(sec.get("num") or f"{i:02d}")
-    tag = sec.get("tag") or ""
-    title = sec.get("title") or ""
-    blurb = sec.get("blurb") or ""
-    parts = []
-    for item in sec.get("items") or []:
-        parts.append(render_block(item, math, base, depth)[1])
-    blurb_html = f'<p class="blurb">{inline(blurb, math)}</p>' if blurb else ""
-    tag_html = f'<span class="unit-tag">{html.escape(str(tag))}</span>' if tag else ""
-    return (f'<section class="unit" id="u{html.escape(num)}">\n<div class="unit-head">'
-            f'{tag_html}<h1>{html.escape(str(title))}</h1>{blurb_html}</div>\n'
-            f'{"".join(parts)}\n</section>')
-
-
-def number_items(sections: list[dict]) -> None:
-    """Give every qa item a number, continuing across sections.
-
-    Omitting `num` is the common case when the agent writes the content: the
-    guide numbers items itself, once each, in document order.
-    """
-    n = 1
-    for sec in sections:
+        num = html.escape(str(sec.get("num") or f"{i:02d}"))
+        title = inline(sec.get("title") or "", math)
+        rows.append(f'<div class="contents-item chapter"><a class="toc" href="#u{num}">'
+                    f'<span class="t">{title}</span></a></div>')
+        topic = 0
         for item in sec.get("items") or []:
-            if not (isinstance(item, dict) and len(item) == 1):
-                continue
-            key = normalise_kind(next(iter(item)))
-            if key != "qa":
-                continue
-            qa = item[next(iter(item))]
-            if not isinstance(qa, dict):
-                continue
-            if qa.get("num") in (None, ""):
-                qa["num"] = n
-                n += 1
-            else:
-                try:
-                    n = int(re.sub(r"\D", "", str(qa["num"]))) + 1
-                except ValueError:
-                    n += 1
+            if isinstance(item, dict) and len(item) == 1 and "h2" in item:
+                topic += 1
+                rows.append(f'<div class="contents-item topic"><a class="toc" href="#u{num}-t{topic}">'
+                            f'<span class="n">{i}.{topic}</span>'
+                            f'<span class="t">{inline(item["h2"], math)}</span></a></div>')
+    return '<section class="contents"><h1>Contents</h1>' + ''.join(rows) + '</section>'
+
+
+def unit_html(sec: dict, i: int, math: Math, base: Path, paperx: bool = False) -> str:
+    num = html.escape(str(sec.get("num") or f"{i:02d}"))
+    title = html.escape(str(sec.get("title") or ""))
+    parts = []
+    topic = 0
+    for item in sec.get("items") or []:
+        kind, rendered = render_block(item, math, base, paperx)
+        if kind == "h2":
+            topic += 1
+            rendered = (f'<h2 class="sec" id="u{num}-t{topic}">'
+                        f'<span class="topic-num">{i}.{topic}</span> {inline(item["h2"], math)}</h2>')
+        elif paperx and kind in {"theory", "p", "pts", "fig", "math", "table", "note", "tip"}:
+            rendered = f'<div class="px-block px-{kind}">{rendered}</div>'
+        parts.append(rendered)
+    return (f'<section class="unit" id="u{num}"><div class="unit-head">'
+            f'<h1>{title}</h1></div>' + ''.join(parts) + '</section>')
+
+
 
 
 # --------------------------------------------------------------------------- #
@@ -735,16 +572,14 @@ def main(argv=None) -> int:
     parser.add_argument("content", type=Path, nargs="?",
                         help="content file (.yaml, .yml or .json)")
     parser.add_argument("--theme", choices=THEMES, help="preset theme")
-    parser.add_argument("--type", dest="guide_type", choices=TYPES + tuple(ALIASES),
-                        help="default | qna | code")
-    parser.add_argument("--depth", choices=DEPTHS, help="full | quick")
+    parser.add_argument("--mode", choices=MODES,
+                        help="full: concise study guide; quick: selective revision essentials")
     parser.add_argument("-o", "--out", type=Path, help="output PDF (default: <content>.pdf)")
     parser.add_argument("--work", type=Path, help="build directory (default: <out>.build)")
     parser.add_argument("--keep", action="store_true", help="keep the build directory")
     parser.add_argument("--html", action="store_true", help="write doc.html and keep the build dir")
     parser.add_argument("--no-check", action="store_true",
                         help="skip the delivery checks (they run by default)")
-    parser.add_argument("--lax", action="store_true", help="downgrade type-rule violations to warnings")
     parser.add_argument("--example", nargs="?", const="-", metavar="PATH",
                         help="write a sample content file to PATH (or stdout) and exit")
     args = parser.parse_args(argv)
@@ -769,92 +604,46 @@ def main(argv=None) -> int:
     content = load_content(content_path)
     meta = content.get("meta") or {}
 
-    theme_name = setting(content, args.theme, "theme", "dark")
-    guide_type = setting(content, args.guide_type, "type", "default")
-    depth = setting(content, args.depth, "depth", "full")
-    guide_type = ALIASES.get(str(guide_type).lower(), str(guide_type).lower())
-    depth = str(depth).lower()
-    for name, value, allowed in (("theme", theme_name, THEMES), ("type", guide_type, TYPES),
-                                 ("depth", depth, DEPTHS)):
+    if "type" in content or "depth" in content:
+        raise SystemExit("Guide types and depth were removed. Delete type/depth and use mode: full or mode: quick.")
+
+    theme_name = setting(content, args.theme, "theme", "paper")
+    guide_mode = str(setting(content, args.mode, "mode", "full")).lower()
+    for name, value, allowed in (("theme", theme_name, THEMES), ("mode", guide_mode, MODES)):
         if value not in allowed:
             raise SystemExit(f"{name} {value!r} is not one of {', '.join(allowed)}")
 
     sections = content["sections"]
     if not isinstance(sections, list):
         raise SystemExit("'sections' must be a list")
+    section_ids = set()
+    for index, section in enumerate(sections, 1):
+        if not isinstance(section, dict):
+            raise SystemExit(f"section {index} must be a mapping")
+        section_id = str(section.get("num") or f"{index:02d}")
+        if section_id in section_ids:
+            raise SystemExit(f"duplicate section number {section_id!r}; omit num for global numbering")
+        section_ids.add(section_id)
 
-    # ---- rule checks before any rendering happens -------------------------
-    allowed = ALLOWED[guide_type]
-    problems, warnings = [], []
-    counts: dict[str, int] = {}
-    starred = qa_total = 0
+    # Validate content primitives; both modes support source-appropriate code and figures.
     for si, sec in enumerate(sections, 1):
-        for ii, item in enumerate(sec.get("items") or [], 1):
+        items = sec.get("items") or []
+        if not isinstance(items, list):
+            raise SystemExit(f"section {si}: items must be a list")
+        for item in items:
             if isinstance(item, str):
                 kind, val = "p", item
             elif isinstance(item, dict) and len(item) == 1:
                 raw_kind, val = next(iter(item.items()))
                 kind = normalise_kind(raw_kind)
             else:
-                problems.append(f"section {si}: malformed item {item!r}")
-                continue
-            counts[kind] = counts.get(kind, 0) + 1
-            if kind not in allowed:
-                problems.append(
-                    f"section {si} ({sec.get('title', '?')}): a '{kind}' block is not allowed in a "
-                    f"{guide_type} guide. Allowed: {', '.join(sorted(allowed))}")
-            if depth == "quick" and kind == "p":
-                if len(str(val)) > QUICK_PARA_LIMIT:
-                    warnings.append(
-                        f"section {si}: a paragraph is over {QUICK_PARA_LIMIT} characters in "
-                        "quick mode - quick states pointers, not prose")
-            if kind == "qa" and isinstance(val, dict):
-                qa = val
-                wordings = qa.get("q") or qa.get("questions") or []
-                if isinstance(wordings, str):
-                    wordings = [wordings]
-                # A code-lab or algorithm item is one task sentence by design.
-                if not (qa.get("file") or qa.get("code") or qa.get("out") or qa.get("algo")):
-                    if len(wordings) < 2:
-                        warnings.append(
-                            f"section {si}, item {ii}: {len(wordings)} wording(s) - a QA "
-                            "item carries two or more ways of asking the same question")
-                    if qa.get("star"):
-                        starred += 1
-                    qa_total += 1
-            if kind == "fn" and isinstance(val, dict):
-                fn_val = val
-                # Quick mode trims a function to its signature and one line, so a
-                # missing description is the real defect there, not a short one.
-                if not (fn_val.get("does") or fn_val.get("description")):
-                    warnings.append(
-                        f"section {si}, item {ii}: function "
-                        f"{fn_val.get('name') or '?'!r} has no description - the code guide "
-                        "explains each function, not just lists it")
-                if depth != "quick" and not (
-                        fn_val.get("code") or fn_val.get("file") or fn_val.get("text")):
-                    warnings.append(
-                        f"section {si}, item {ii}: function "
-                        f"{fn_val.get('name') or '?'!r} has no body listing (full depth)")
-    if qa_total and starred > max(2, qa_total // 3):
-        warnings.append(
-            f"{starred} of {qa_total} QA items are starred - a star means exam-likely, "
-            "so starring most items says nothing")
-    expected = EXPECTED.get(guide_type)
-    if expected and not any(counts.get(k) for k in expected):
-        warnings.append(
-            f"a {guide_type} guide with no {', '.join(repr(k) for k in expected)} block - "
-            "is the type right?")
-    if guide_type == "code" and not counts.get("fn"):
-        warnings.append(
-            "a code guide with no 'fn' items is a listing dump - the code type "
-            "explains each function, so check that is what was wanted")
-    for problem in problems:
-        print(f"error: {problem}", file=sys.stderr)
-    for warning in warnings:
-        print(f"warning: {warning}", file=sys.stderr)
-    if problems and not args.lax:
-        raise SystemExit("content does not match the guide type; fix it or pass --lax")
+                raise SystemExit(f"section {si}: each item must be a string or single-key mapping")
+            if kind not in BLOCKS:
+                raise SystemExit(f"section {si}: unsupported block {kind!r}; use topic prose, points, code, formulas or figures")
+            if guide_mode == "quick" and kind in ("p", "theory"):
+                paragraphs = val.get("paragraphs", []) if kind == "theory" and isinstance(val, dict) else [val]
+                if any(len(str(paragraph)) > QUICK_PARA_LIMIT for paragraph in paragraphs):
+                    print(f"warning: section {si}: quick mode should contain selective revision cues, not long prose", file=sys.stderr)
 
     # ---- assets ------------------------------------------------------------
     out_pdf = (args.out or content_path.with_suffix(".pdf")).resolve()
@@ -864,9 +653,9 @@ def main(argv=None) -> int:
     work.mkdir(parents=True)
     cfg = json.loads((PICKER / "presets" / f"{theme_name}.json").read_text(encoding="utf-8"))
     themes.build(cfg, work)
-    mode = "light" if "light" in (cfg.get("themes") or []) and "dark" not in (cfg.get("themes") or []) else "dark"
-    text_colour = cfg[mode]["text"]
-    math = Math(text_colour)
+    appearance = "light" if "light" in (cfg.get("themes") or []) and "dark" not in (cfg.get("themes") or []) else "dark"
+    text_colour = cfg[appearance]["text"]
+    math = Math(text_colour, display_size=14.0 if theme_name == "paperx" else 11.0)
 
     # figures are copied in so the build dir is self-contained and base_url works
     figs = work / "figs"
@@ -880,37 +669,41 @@ def main(argv=None) -> int:
             src = val.get("file") or val.get("path")
             if src:
                 figs.mkdir(exist_ok=True)
-                shutil.copyfile(base / src, figs / Path(src).name)
+                copy_figure(base / src, figs)
 
-    body = [cover_html(meta, math), contents_html(sections, meta, math)]
-    number_items(sections)
-    body += [unit_html(sec, i, math, base, depth) for i, sec in enumerate(sections, 1)]
-    if content.get("closing"):
-        body.append(f'<div class="end"><p>{inline(content["closing"], math)}</p></div>')
+    paperx = theme_name == "paperx"
+    body = [contents_html(sections, meta, math)]
+    body += [unit_html(sec, i, math, base, paperx) for i, sec in enumerate(sections, 1)]
 
     document = (
         '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
         f'<title>{html.escape(str(meta.get("title", "Study guide")))}</title>\n'
-        '<link rel="stylesheet" href="theme.css">\n</head>\n<body>\n'
+        f'<link rel="stylesheet" href="theme.css">\n</head>\n<body data-theme="{theme_name}">\n'
         + "\n".join(body) + "\n</body>\n</html>\n"
     )
     document = math.resolve(document, work)
     (work / "doc.html").write_text(document, encoding="utf-8")
 
     from weasyprint import HTML
-    HTML(str(work / "doc.html"), base_url=str(work) + "/").write_pdf(str(out_pdf))
+    rendered = HTML(str(work / "doc.html"), base_url=str(work) + "/").render()
+    rendered.write_pdf(str(out_pdf))
 
     pages = _page_count(out_pdf)
     items = sum(len(sec.get("items") or []) for sec in sections)
     print(f"{out_pdf.name}: {pages} pages · {len(sections)} sections · {items} items · "
-          f"{theme_name} · {guide_type} · {depth}")
+          f"{theme_name} · {guide_mode}")
 
+    checks_ok = True
     if not args.no_check:
-        if not run_checks(out_pdf):
+        first_unit = "u" + str(sections[0].get("num") or "01") if sections else None
+        front_pages = next((i for i, page in enumerate(rendered.pages)
+                            if first_unit in page.anchors), 1)
+        checks_ok = run_checks(out_pdf, geometry=themes.page_geometry(cfg), front_pages=front_pages)
+        if not checks_ok:
             print("checks reported problems above - the PDF was still written", file=sys.stderr)
     if not (args.keep or args.html):
         shutil.rmtree(work, ignore_errors=True)
-    return 0
+    return 0 if checks_ok else 1
 
 
 def _page_count(pdf: Path) -> int:
@@ -924,7 +717,7 @@ def _page_count(pdf: Path) -> int:
 # --------------------------------------------------------------------------- #
 # delivery checks
 # --------------------------------------------------------------------------- #
-def run_checks(pdf: Path) -> bool:
+def run_checks(pdf: Path, geometry: dict | None = None, front_pages: int = 1) -> bool:
     """Fill ratio, plus both background seams, measured on rasters of the PDF.
 
     The seam reference is the page's *modal* colour, not a column at the centre:
@@ -953,9 +746,10 @@ def run_checks(pdf: Path) -> bool:
     files = sorted(tmp.glob("p-*.png"))
     first = Image.open(files[0]).convert("L")
     width, height = first.size
-    top = int(19 / 25.4 * dpi)
-    bottom = height - int(22 / 25.4 * dpi)
-    band = int(15 / 25.4 * dpi)             # the side margin
+    geometry = geometry or themes.PAGE
+    top = int(geometry["top"] / 25.4 * dpi)
+    bottom = height - int(geometry["bottom"] / 25.4 * dpi)
+    band = int(geometry["left"] / 25.4 * dpi)
 
     sparse = []
     for f in files:
@@ -979,7 +773,7 @@ def run_checks(pdf: Path) -> bool:
         # One gap is structural, not a fault: a code card cannot split, so a
         # listing pushed to the next page leaves its own page short. Report it,
         # do not fail the build over it.
-        if frac < 0.72 and n not in (1, 2, len(files)):
+        if frac < 0.72 and n > front_pages and n != len(files):
             sparse.append((n, round(frac, 2)))
     if sparse:
         print(f"  warning: sparse pages (< 72% full): {sparse}", file=sys.stderr)
@@ -1018,7 +812,9 @@ def run_checks(pdf: Path) -> bool:
         # content-free bands: the top margin, and the bottom margin left of
         # the page number
         top_rows = (4, max(5, top - 8))
-        bottom_rows = (bottom + 8, h - 4)
+        # Stay immediately below the content box: PaperX has a running title
+        # farther down in the left footer, which is ink rather than a seam.
+        bottom_rows = (bottom + 2, min(bottom + 6, h - 4))
         left_cols = (4, max(5, band - 8))
         right_cols = (w - band + 8, w - 4)
 
@@ -1053,8 +849,7 @@ def run_checks(pdf: Path) -> bool:
         for m in re.finditer(r"\\(frac|sum|begin|alpha|beta|gamma|log|varepsilon)", text):
             leaked.append((page.number + 1, m.group(0)))
         # Raw inline TeX that never reached the SVG pass. A lone `$` is not a
-        # leak - the cover's terminal block prints a shell prompt - so this
-        # only fires on a matched pair with TeX inside it.
+        # leak; this only fires on a matched pair with TeX inside it.
         for m in re.finditer(r"\$([^$\n]{1,80})\$", text):
             if re.search(r"[\\^_{}]", m.group(1)):
                 leaked.append((page.number + 1, m.group(0)[:30]))
@@ -1076,80 +871,34 @@ def run_checks(pdf: Path) -> bool:
     return ok
 
 
-EXAMPLE = r"""# One YAML file is the whole input. Everything else is the tool's job.
-#   python build.py guide.yaml --theme cobalt --type code --depth quick
-#
-# meta, theme, type and depth can live here or arrive as CLI flags.
-#   type:  default | qna | code
-#   depth: full | quick
-
+EXAMPLE = r"""# Author the content for the chosen mode before rendering.
+#   python build.py guide.yaml --theme paperx --mode full
 meta:
-  title: Operating Systems
-  subtitle: Everything from the twelve lectures, in the order it is examined.
-  tag: CS 301 · Revision
-  terminal:
-    - cmd: python build.py guide.yaml --theme cobalt
-      note: rebuilds this file
-    - cmd: python build.py guide.yaml --depth full
-      note: the long version
-
-theme: cobalt
-type: code
-depth: full
-
+  title: Core Concepts
+theme: paperx
+mode: full
 sections:
-  - tag: SCHEDULING
-    title: CPU Scheduling
-    blurb: The policies and the trade they make.
+  - title: Demand
     items:
+      - h2: Quantity demanded and demand
+      - p: >
+          **Quantity demanded** is the amount bought at a given price.
+          A change in own price causes movement along the same demand curve.
+          A change in another determinant, such as income, shifts the curve.
       - pts:
-          - "**FCFS** — run to completion, convoy effect on long jobs"
-          - "**Round robin** — time slice q, ready queue FIFO, O(1) dispatch"
-          - "**Priority** — starvation is real; fix with ageing"
-      - math:
-          tex: W = \frac{1}{n} \sum_{i=1}^{n} w_i
-          num: 1
-      - fn:
-          name: pick_next
-          sig: "struct task *pick_next(struct rq *q)"
-          does: >
-            Returns the next task to run on this CPU, or NULL when the runqueue
-            is empty. Round robin, so it always takes the head of the queue.
-          args:
-            - {name: q, type: "struct rq *", desc: The runqueue for this CPU. Never NULL.}
-          returns: >
-            The task at the head of the queue, already dequeued and marked
-            running, or NULL if there was nothing to run.
-          notes:
-            - The caller must hold `q->lock`; this function does not take it.
-          cx: O(1) time · O(1) extra space
-          code:
-            text: |
-              struct task *pick_next(struct rq *q) {
-                  struct task *t = q->head;
-                  if (t) q->head = t->next;
-                  return t;
-              }
-            lang: c
-
-  - tag: SYSCALLS
-    title: System Calls
-    blurb: The boundary between user code and the kernel.
+          - A price fall causes an extension along the curve.
+          - An increase in demand shifts the curve to the right.
+  - title: Code and Algorithms
     items:
+      - h2: Squaring a number
+      - p: Multiply the input by itself. The function returns the result.
       - code:
-          title: fork_demo.c
+          title: square.c
           lang: c
-          cx: "Time complexity · O(1) system call"
           text: |
-              #include <stdio.h>
-              #include <unistd.h>
-
-              int main(void) {
-                  pid_t pid = fork();
-                  if (pid == 0) printf("child");
-                  else printf("parent %d", pid);
-                  return 0;
-              }
+            int square(int n) {
+                return n * n;
+            }
 """
 
 if __name__ == "__main__":

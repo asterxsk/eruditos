@@ -88,12 +88,12 @@ def resolve_config(per_guide: dict | None = None, repo_default: dict | None = No
         if layer and layer.get("basedOn"):
             name = layer["basedOn"]
             break
-    name = name or "dark"
+    name = name or "paper"
     preset_file = PRESETS / f"{name}.json"
     if preset_file.exists():
         chosen = json.loads(preset_file.read_text(encoding="utf-8"))
     else:
-        chosen = json.loads((PRESETS / "dark.json").read_text(encoding="utf-8"))
+        raise ValueError(f"Unknown theme {name!r}; choose paper, paperx, or obsidian")
     if repo_default:
         chosen = _deep_merge(chosen, {k: v for k, v in repo_default.items() if k != "basedOn"})
     if per_guide:
@@ -232,13 +232,16 @@ def _font_faces(cfg: dict) -> str:
                 f' src: url("fonts/{filename}") format("woff2");'
                 f" font-weight: {weight}; font-style: normal; font-display: swap; }}"
             )
-    # the label role always ships an italic: kickers, tags and captions are set in it
+    # Paper/Obsidian labels and PaperX serif emphasis use the actual serif italic.
+    # Never register that serif file under a sans family: Pango can conflate them.
     label_fam = (((cfg.get("fonts") or {}).get("label") or {}).get("family")
                  or "Guide Serif")
-    if label_fam in BUNDLED and (FONTS / LABEL_ITALIC).exists():
+    serif_used = label_fam == "Guide Serif" or any(
+        spec.get("family") == "Guide Serif" for spec in (cfg.get("fonts") or {}).values())
+    if serif_used and (FONTS / LABEL_ITALIC).exists():
         lines.append(
             "@font-face {"
-            f' font-family: "{label_fam}";'
+            ' font-family: "Guide Serif";'
             f' src: url("fonts/{LABEL_ITALIC}") format("woff2");'
             f" font-weight: 400; font-style: italic; font-display: swap; }}"
         )
@@ -316,6 +319,12 @@ def _gradient_layers(t: dict) -> str:
     return (f'linear-gradient({ang}deg, {frm} 0%, {via} 45%, {to} 100%)')
 
 
+def page_geometry(cfg: dict) -> dict:
+    if cfg.get("name") == "paperx":
+        return dict(PAGE, top=15.0, right=14.0, bottom=16.0, left=14.0)
+    return dict(PAGE)
+
+
 def emit_css(cfg: dict, theme_name: str, base_css: str | None = None) -> str:
     """The generated theme.css: static base + generated tokens + baked @page."""
     theme = cfg.get(theme_name) or cfg.get("dark") or {}
@@ -328,11 +337,12 @@ def emit_css(cfg: dict, theme_name: str, base_css: str | None = None) -> str:
     patch = gtop.get("patch") or {}
     texture = gtop.get("texture", "none")
     use_patch = texture != "none" and float(patch.get("strength", 0) or 0) > 0
+    page = page_geometry(cfg)
     # Sized to the whole sheet and shifted back out by the margins â€” see PAGE.
     # The `size`/`margin` declarations are not decoration: they are what the
     # shift compensates for, and omitting them resets WeasyPrint's own default
     # margins, which measured ~19.8mm and left an ungrain'd strip on the left.
-    sheet = f'{PAGE["w"]:g}mm {PAGE["h"]:g}mm'
+    sheet = f'{page["w"]:g}mm {page["h"]:g}mm'
     if texture == "none":
         layers, sizes, repeats = [], [], []
     elif use_patch:
@@ -348,14 +358,14 @@ def emit_css(cfg: dict, theme_name: str, base_css: str | None = None) -> str:
         bg_geom = (
             f'  background-size: {", ".join(sizes)};\n'
             f'  background-repeat: {", ".join(repeats)};\n'
-            f'  background-position: {-PAGE["left"]:g}mm {-PAGE["top"]:g}mm;\n'
+            f'  background-position: {-page["left"]:g}mm {-page["top"]:g}mm;\n'
         )
     else:
         bg_line = bg_geom = ""
     page_bg = (
         f'  size: A4;\n'
-        f'  margin: {PAGE["top"]:g}mm {PAGE["right"]:g}mm '
-        f'{PAGE["bottom"]:g}mm {PAGE["left"]:g}mm;\n'
+        f'  margin: {page["top"]:g}mm {page["right"]:g}mm '
+        f'{page["bottom"]:g}mm {page["left"]:g}mm;\n'
         f'  background-color: {theme["base"]};\n'
         + bg_line + bg_geom
     )
@@ -383,6 +393,9 @@ def emit_css(cfg: dict, theme_name: str, base_css: str | None = None) -> str:
         "@page {\n" + page_bg + "}",
         (base_css or "").strip(),
     ]
+    if cfg.get("name") == "paperx":
+        parts.append('@page { @bottom-left { content: "Study guide"; font-family: "Guide Sans"; font-size: 6.3pt; color: #555; }'
+                     ' @bottom-right { content: counter(page) " / " counter(pages); font-family: "Guide Sans"; font-size: 6.3pt; color: #555; } }')
     return "\n\n".join(p for p in parts if p)
 
 
@@ -416,7 +429,8 @@ def _copy_fonts(cfg: dict, out_dir: Path) -> list[str]:
     # the label italic is not in any manifest dict, so copy it explicitly
     label_fam = (((cfg.get("fonts") or {}).get("label") or {}).get("family")
                  or "Guide Serif")
-    if label_fam in BUNDLED:
+    if label_fam == "Guide Serif" or any(
+            spec.get("family") == "Guide Serif" for spec in (cfg.get("fonts") or {}).values()):
         src = FONTS / LABEL_ITALIC
         if src.exists():
             dest.mkdir(parents=True, exist_ok=True)

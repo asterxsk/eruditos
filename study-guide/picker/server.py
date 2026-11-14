@@ -1,4 +1,4 @@
-"""Read-only localhost gallery of the eight bundled study-guide themes."""
+"""Read-only localhost gallery of the three bundled study-guide themes."""
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -6,7 +6,7 @@ from urllib.parse import urlsplit
 import theme
 
 HERE = Path(__file__).resolve().parent
-ORDER = ('dark', 'graphite', 'cobalt', 'obsidian', 'paper', 'sepia', 'ice', 'mono')
+ORDER = ('paper', 'paperx', 'obsidian')
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
@@ -43,13 +43,21 @@ class Handler(BaseHTTPRequestHandler):
                 <style>{css}
                 body{{margin:0;padding:22px;background:{pal['base']};color:{pal['text']}}}
                 h1{{font-size:23px;color:{pal['strong']}}} .sample-label{{color:{pal['accent']}}}
-                </style><body><div class="sample-label">{name} / study guide</div>
+                </style><body data-theme="{name}"><div class="sample-label">{name} / study guide</div>
                 <h1>Understanding the topic</h1><p>A concise explanation, with clear steps and readable labels.</p>
                 <div class="card"><div class="card-h">Method</div><div class="card-b">1. Identify the given values.<br>2. Apply the formula.<br>3. Check the result.</div></div>
                 <div class="work"><div class="work-h">Worked example</div><div class="work-b">Result = 24 units</div></div>
                 <div class="code"><div class="code-h"><span class="name">example.c</span></div><pre>return result;</pre></div>
                 <table class="data"><tr><th>Quantity</th><th>Value</th></tr><tr><td>Time</td><td>O(n)</td></tr></table>
                 </body></html>"""
+                if name == "paperx":
+                    sample = f'''<!doctype html><html lang="en"><meta charset="utf-8"><style>{css}
+                    body{{margin:0;padding:22px;background:white;color:#171717}}h1{{font-size:23px}}
+                    </style><body data-theme="paperx"><h1>Understanding the topic</h1>
+                    <div class="px-block px-theory"><p>A concise explanation, with clear steps and readable labels.</p></div>
+                    <div class="px-block px-math"><div class="eq">Result = rate × time</div></div>
+                    <div class="px-block px-table"><table class="data"><tr><th>Quantity</th><th>Value</th></tr><tr><td>Time</td><td>O(n)</td></tr></table></div>
+                    <div class="px-block px-note"><p>The formula assumes a constant rate.</p></div></body></html>'''
                 return self.send(200, sample, "text/html; charset=utf-8")
         self.send(404, "not found", "text/plain")
 
