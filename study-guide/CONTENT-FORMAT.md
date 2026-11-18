@@ -13,7 +13,7 @@ CLI settings override the file. Renderer fallbacks are `theme: paper` and
 Collect missing theme/mode choices with the harness's built-in question tool,
 recommend Full for an in-depth guide, then use the supplied source or request it
 if absent. Quick is for skimming and last-minute revision.
-The only themes are `paper`, `paperx`, `obsidian`; the only modes are `full`,
+The themes are `paper`, `paperx`, `obsidian`, and `pdfcn`; the only modes are `full`,
 `quick`. Output is `<content-stem>.pdf` unless `-o` supplies a path.
 
 Full contains concise textbook-style topic answers covering the requested
@@ -79,6 +79,13 @@ omit either when unused. Quick may use these or `pts` to carry selected key poin
 Do not automatically add paragraphs, function listings or complexity fields to
 fill a template. For `note`, `tip` and `work`, use a genuine content-specific title
 when useful. Generic semantic headings are not printed in PaperX.
+
+For `pdfcn`, use `h3` for a specific explanation or a worked example's setup,
+`p` for short paragraphs, and `work` for the calculation itself. Existing
+SVG and raster figures keep their artwork and can use the usual sizing fields.
+The preset uses locally installed SF Pro Display or bundled Guide Sans. Set
+`SF_PRO_DISPLAY_DIR` to the directory containing the local SF Pro Display OTF
+files if the PDF builder needs an explicit path.
 
 ### Inline markup and equations
 

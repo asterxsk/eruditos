@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "name": "pdfcn",
+  "themes": [
+    "light"
+  ],
+  "light": {
+    "base": "#ffffff",
+    "gradient": {
+      "from": "#ffffff",
+      "via": "#ffffff",
+      "to": "#ffffff",
+      "angle": 0
+    },
+    "strong": "#1d2730",
+    "text": "#1d2730",
+    "dim": "#50616f",
+    "faint": "#50616f",
+    "rule": "#dce4e9",
+    "ruleStrong": "#dce4e9",
+    "accent": "#1764c0",
+    "blockFill": "#f5f6f7",
+    "wash": "#f0f5f8",
+    "dimSoft": "#dce4e9",
+    "warn": "#876000",
+    "warnLine": "#dce4e9",
+    "ok": "#00734e",
+    "okLine": "#dce4e9",
+    "bad": "#b14722",
+    "code": {
+      "fill": "#16181d",
+      "text": "#d7dbe2",
+      "keyword": "#93b4e8",
+      "comment": "#a2a8b2"
+    }
+  },
+  "gradient": {
+    "shape": "flat",
+    "texture": "none"
+  },
+  "layout": "normal",
+  "fonts": {
+    "heading": {
+      "source": "local",
+      "family": "SF Pro Display",
+      "size": 24
+    },
+    "body": {
+      "source": "local",
+      "family": "SF Pro Display",
+      "size": 11.5
+    },
+    "code": {
+      "source": "bundled",
+      "family": "DejaVu Sans Mono",
+      "size": 7.5
+    },
+    "label": {
+      "source": "local",
+      "family": "SF Pro Display",
+      "size": 9.5
+    }
+  }
+}

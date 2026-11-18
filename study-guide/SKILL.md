@@ -1,6 +1,6 @@
 ---
 name: "study-guide"
-description: "Build PDF study guides from slides, textbook chapters, lab manuals, code, and notes in Paper, PaperX, or Obsidian. Full gives concise textbook-style topic answers; quick selects the crux for revision. PaperX supports redrawn figures and chapter subagents."
+description: "Build PDF study guides from slides, textbook chapters, lab manuals, code, and notes in Paper, PaperX, Obsidian, or pdfcn. Full gives concise textbook-style topic answers; quick selects the crux for revision. PaperX supports redrawn figures and chapter subagents."
 ---
 
 # Study Guide
@@ -20,9 +20,12 @@ supports one question at a time, ask them consecutively before requesting source
 Reuse choices explicitly supplied in the request or earlier in the conversation;
 do not ask the user to answer them again.
 
-- **Theme:** Paper (`paper`), PaperX (`paperx`), or Obsidian (`obsidian`). Paper is
+- **Theme:** Paper (`paper`), PaperX (`paperx`), Obsidian (`obsidian`), or pdfcn (`pdfcn`). Paper is
   light with dark code cards; Obsidian is dark; PaperX is a compact white academic
   layout with serif body text, sans-serif headings and stronger coloured left rules.
+  pdfcn uses SF Pro Display when installed, blue topic numbers on gray heading
+  bands, and clear spacing for explanatory subheads and worked examples. It uses
+  the same shared PDF builder and does not require Node.js.
 - **Mode:** offer **Full (Recommended)** (`full`) and **Quick** (`quick`). Explain
   the choice in the question: Full is recommended for a proper, in-depth study
   guide with clear topic explanations and the important exam material. Quick is
@@ -46,12 +49,12 @@ ordinary chat when the harness's input tool accepts text only; do not pretend it
 can receive file uploads. Ask a later source-dependent clarification only when
 inspection reveals an ambiguity that materially blocks the guide.
 
-The read-only gallery at `picker/server.py` can show the three theme samples when
+The read-only gallery at `picker/server.py` can show the theme samples when
 the learner needs to compare them. Run it as a hidden process if used, take the
 choice through the harness's built-in question tool when available, and stop the
 process when done. The gallery is optional and does not replace the opening questions.
 A theme named in the request needs no gallery or repeat selection. If the gallery
-cannot be shown, list the same three names; do not silently choose a saved design.
+cannot be shown, list the same names; do not silently choose a saved design.
 
 ### Full
 
@@ -107,6 +110,10 @@ headings and concise, content-specific notes are useful; boilerplate is not.
 **Paper and Obsidian:** include source screenshots for in-scope diagrams, cropped
 with all labels, axes, arrows, annotations and legends intact. Preserve their
 original colours and readable backgrounds, including on dark pages.
+
+**pdfcn:** reuse existing SVG or raster diagrams and keep their content, colours,
+labels, and proportions intact. Use short, concept-specific `h3` headings to
+introduce a mechanism or example when it helps the reader follow a topic.
 
 **PaperX:** read [references/paperx.md](references/paperx.md) before drafting.
 Redraw instructional figures, preferably as self-contained SVG. Inspect their
@@ -189,7 +196,7 @@ hand-edit generated HTML/CSS. Retain delivery checks and visually inspect render
 pages, including chapter transitions, equations, tables, code and figures.
 
 - Contents links and printed page numbers reach the right topics; contents is the
-  first material in all three themes.
+  first material in every theme.
 - Full covers the requested essentials concisely; quick states an honest selection
   and carries no false completeness or exam-likelihood claims.
 - Figures follow the selected theme's policy, preserve their technical meaning,

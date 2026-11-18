@@ -30,7 +30,7 @@ sys.path.insert(0, str(PICKER))
 
 import theme as themes  # noqa: E402  (needs PICKER on sys.path)
 
-THEMES = ("paper", "paperx", "obsidian")
+THEMES = themes.PRESET_NAMES
 MODES = ("full", "quick")
 BLOCKS = {"h2", "h3", "p", "pts", "math", "fig", "table", "note", "tip",
           "theory", "algo", "work", "code"}
@@ -526,7 +526,7 @@ def render_block(item, math: Math, base: Path, paperx: bool = False) -> tuple[st
 # --------------------------------------------------------------------------- #
 
 
-def contents_html(sections: list[dict], meta: dict, math: Math) -> str:
+def contents_html(sections: list[dict], meta: dict, math: Math, *, show_title: bool = False) -> str:
     rows = []
     for i, sec in enumerate(sections, 1):
         num = html.escape(str(sec.get("num") or f"{i:02d}"))
@@ -540,7 +540,11 @@ def contents_html(sections: list[dict], meta: dict, math: Math) -> str:
                 rows.append(f'<div class="contents-item topic"><a class="toc" href="#u{num}-t{topic}">'
                             f'<span class="n">{i}.{topic}</span>'
                             f'<span class="t">{inline(item["h2"], math)}</span></a></div>')
-    return '<section class="contents"><h1>Contents</h1>' + ''.join(rows) + '</section>'
+    title = meta.get("title")
+    heading = '<h1>Contents</h1>'
+    if show_title and title and str(title).strip().casefold() != "contents":
+        heading = f'<h1 class="guide-title">{html.escape(str(title))}</h1><h2 class="contents-title">Contents</h2>'
+    return '<section class="contents">' + heading + ''.join(rows) + '</section>'
 
 
 def unit_html(sec: dict, i: int, math: Math, base: Path, paperx: bool = False) -> str:
@@ -655,7 +659,7 @@ def main(argv=None) -> int:
     themes.build(cfg, work)
     appearance = "light" if "light" in (cfg.get("themes") or []) and "dark" not in (cfg.get("themes") or []) else "dark"
     text_colour = cfg[appearance]["text"]
-    math = Math(text_colour, display_size=14.0 if theme_name == "paperx" else 11.0)
+    math = Math(text_colour, display_size=14.0 if theme_name in {"paperx", "pdfcn"} else 11.0)
 
     # figures are copied in so the build dir is self-contained and base_url works
     figs = work / "figs"
@@ -672,7 +676,7 @@ def main(argv=None) -> int:
                 copy_figure(base / src, figs)
 
     paperx = theme_name == "paperx"
-    body = [contents_html(sections, meta, math)]
+    body = [contents_html(sections, meta, math, show_title=theme_name == "pdfcn")]
     body += [unit_html(sec, i, math, base, paperx) for i, sec in enumerate(sections, 1)]
 
     document = (
@@ -860,8 +864,8 @@ def run_checks(pdf: Path, geometry: dict | None = None, front_pages: int = 1) ->
     # ---- fonts actually embedded ------------------------------------------
     try:
         names = {f[3].split("+")[-1] for f in pages[0].get_fonts()}
-        if not any("Guide" in n or "Poppins" in n or "DejaVu" in n for n in names):
-            print(f"  warning: no bundled font in page 1 ({sorted(names)}) - "
+        if not any(n.startswith(("Guide", "Poppins", "DejaVu", "SF-Pro-Display")) for n in names):
+            print(f"  warning: no theme font in page 1 ({sorted(names)}) - "
                   "the theme's fonts may have fallen back", file=sys.stderr)
     except Exception:  # noqa: BLE001
         pass

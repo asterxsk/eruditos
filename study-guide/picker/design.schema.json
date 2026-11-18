@@ -14,12 +14,12 @@
       "const": 1
     },
     "name": {
-      "enum": ["paper", "paperx", "obsidian"],
+      "enum": ["paper", "paperx", "obsidian", "pdfcn"],
       "minLength": 1,
       "description": "Preset name. Present in the library, absent in a per-guide config."
     },
     "basedOn": {
-      "enum": ["paper", "paperx", "obsidian"],
+      "enum": ["paper", "paperx", "obsidian", "pdfcn"],
       "minLength": 1,
       "description": "Name of the library preset this config starts from. Absent in library presets themselves."
     },
@@ -53,7 +53,8 @@
             "preset": {
               "enum": [
                 "paper",
-                "paperx"
+                "paperx",
+                "pdfcn"
               ]
             }
           },

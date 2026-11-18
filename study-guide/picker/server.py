@@ -1,4 +1,4 @@
-"""Read-only localhost gallery of the three bundled study-guide themes."""
+"""Read-only localhost gallery of the bundled study-guide themes."""
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -6,7 +6,6 @@ from urllib.parse import urlsplit
 import theme
 
 HERE = Path(__file__).resolve().parent
-ORDER = ('paper', 'paperx', 'obsidian')
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
@@ -34,7 +33,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, file.read_bytes(), "font/woff2")
         if route.startswith("/sample/"):
             name = route.removeprefix("/sample/")
-            if name in ORDER:
+            if name in theme.PRESET_NAMES:
                 cfg = json.loads((HERE / "presets" / f"{name}.json").read_text(encoding="utf-8"))
                 mode = cfg["themes"][0]
                 pal = cfg[mode]
@@ -58,6 +57,24 @@ class Handler(BaseHTTPRequestHandler):
                     <div class="px-block px-math"><div class="eq">Result = rate × time</div></div>
                     <div class="px-block px-table"><table class="data"><tr><th>Quantity</th><th>Value</th></tr><tr><td>Time</td><td>O(n)</td></tr></table></div>
                     <div class="px-block px-note"><p>The formula assumes a constant rate.</p></div></body></html>'''
+                if name == "pdfcn":
+                    sample = f"""<!doctype html><html lang="en"><meta charset="utf-8"><style>{css}
+                    body{{padding:22px}}
+                    </style><body data-theme="pdfcn">
+                    <div class="unit-head"><h1>How a memory hierarchy works</h1></div>
+                    <h2 class="sec"><span class="topic-num">1.1</span> Why a cache saves time</h2>
+                    <p>The cache keeps recently used blocks close to the CPU, so a repeated
+                    access can often avoid the trip to main memory.</p>
+                    <h3 class="sub">Follow one access</h3>
+                    <p>When the requested block is already present, the CPU reads it from
+                    the cache. A miss fetches the block from the next level.</p>
+                    <div class="work"><div class="work-h">Average access time</div>
+                    <div class="work-b"><span class="cont">A 2 ns lookup plus a 5% chance of
+                    an 80 ns miss penalty averages 6 ns.</span></div></div>
+                    <table class="data"><thead><tr><th>Result</th><th>Action</th></tr></thead>
+                    <tbody><tr><td>Hit</td><td>Read the cached block</td></tr>
+                    <tr><td>Miss</td><td>Fetch from the next level</td></tr></tbody></table>
+                    </body></html>"""
                 return self.send(200, sample, "text/html; charset=utf-8")
         self.send(404, "not found", "text/plain")
 

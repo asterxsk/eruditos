@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import random
 from pathlib import Path
 
@@ -27,6 +28,8 @@ HERE = Path(__file__).resolve().parent
 PRESETS = HERE / "presets"
 FONTS = HERE / "fonts"
 BASE_CSS = HERE / "base.css"
+PRESET_NAMES = ("paper", "paperx", "obsidian", "pdfcn")
+SF_PRO = "SF Pro Display"
 
 # ---- bundled font manifest: role-appropriate weights, per the vendored files ----
 BUNDLED = {
@@ -93,7 +96,7 @@ def resolve_config(per_guide: dict | None = None, repo_default: dict | None = No
     if preset_file.exists():
         chosen = json.loads(preset_file.read_text(encoding="utf-8"))
     else:
-        raise ValueError(f"Unknown theme {name!r}; choose paper, paperx, or obsidian")
+        raise ValueError(f"Unknown theme {name!r}; choose {', '.join(PRESET_NAMES)}")
     if repo_default:
         chosen = _deep_merge(chosen, {k: v for k, v in repo_default.items() if k != "basedOn"})
     if per_guide:
@@ -210,18 +213,17 @@ def make_grain_patch(cfg: dict, out_path: Path, w: int = 1240, h: int = 1754, se
 # --------------------------------------------------------------------------- #
 # CSS emission
 # --------------------------------------------------------------------------- #
+def _bundled_family(spec: dict) -> str | None:
+    family = spec.get("family")
+    if spec.get("source") != "local":
+        return family
+    return "Guide Sans" if family == SF_PRO else None
+
+
 def _font_faces(cfg: dict) -> str:
-    """@font-face for each role's family. A local family falls back to a bundled url."""
+    """Emit each bundled family used directly or as a local font fallback."""
     lines = []
-    for role in ("heading", "body", "code", "label"):
-        spec = (cfg.get("fonts") or {}).get(role)
-        if not spec:
-            continue
-        fam = spec["family"]
-        if spec.get("source") == "local":
-            stack = f'"{fam}", "Segoe UI", sans-serif'
-            lines.append(f"/* {role}: local family {fam!r} - falls back to bundled if absent */")
-            continue
+    for fam in dict.fromkeys(_bundled_family(spec) for spec in (cfg.get("fonts") or {}).values()):
         manifest = BUNDLED.get(fam)
         if not manifest:
             continue
@@ -252,6 +254,8 @@ def _role_stack(cfg: dict, role: str) -> str:
     spec = (cfg.get("fonts") or {}).get(role) or {}
     fam = spec.get("family", "Guide Serif" if role == "label" else "Guide Sans")
     if spec.get("source") == "local":
+        if fam == SF_PRO:
+            return f'"{fam}", "Guide Sans", sans-serif'
         return f'"{fam}", "Segoe UI", sans-serif'
     default = "Guide Serif" if role == "label" else "Guide Sans"
     return BUNDLED.get(fam, BUNDLED[default])["stack"]
@@ -322,6 +326,8 @@ def _gradient_layers(t: dict) -> str:
 def page_geometry(cfg: dict) -> dict:
     if cfg.get("name") == "paperx":
         return dict(PAGE, top=15.0, right=14.0, bottom=16.0, left=14.0)
+    if cfg.get("name") == "pdfcn":
+        return dict(PAGE, top=15.0, right=16.6, bottom=18.0, left=16.6)
     return dict(PAGE)
 
 
@@ -396,6 +402,10 @@ def emit_css(cfg: dict, theme_name: str, base_css: str | None = None) -> str:
     if cfg.get("name") == "paperx":
         parts.append('@page { @bottom-left { content: "Study guide"; font-family: "Guide Sans"; font-size: 6.3pt; color: #555; }'
                      ' @bottom-right { content: counter(page) " / " counter(pages); font-family: "Guide Sans"; font-size: 6.3pt; color: #555; } }')
+    if cfg.get("name") == "pdfcn":
+        footer = f"font-family: {body}; font-size: 9pt; color: {theme['dim']};"
+        parts.append('@page { @bottom-left { content: "Study guide"; ' + footer
+                     + '} @bottom-right { content: counter(page); ' + footer + '} }')
     return "\n\n".join(p for p in parts if p)
 
 
@@ -412,9 +422,7 @@ def _copy_fonts(cfg: dict, out_dir: Path) -> list[str]:
     copied = []
     for role in ("heading", "body", "code", "label"):
         spec = (cfg.get("fonts") or {}).get(role) or {}
-        if spec.get("source") == "local":
-            continue                      # a local family is not ours to ship
-        manifest = BUNDLED.get(spec.get("family"))
+        manifest = BUNDLED.get(_bundled_family(spec))
         if not manifest:
             continue
         for filename in manifest["files"].values():
@@ -441,11 +449,37 @@ def _copy_fonts(cfg: dict, out_dir: Path) -> list[str]:
     return copied
 
 
+def _installed_font_faces(cfg: dict) -> str:
+    """Reference user-installed SF Pro files for WeasyPrint. The gallery uses system fonts."""
+    if not any(_bundled_family(spec) == "Guide Sans" and spec.get("family") == SF_PRO
+               for spec in (cfg.get("fonts") or {}).values()):
+        return ""
+    configured = os.environ.get("SF_PRO_DISPLAY_DIR")
+    local_app_data = os.environ.get("LOCALAPPDATA")
+    if configured:
+        folder = Path(configured).expanduser()
+    elif local_app_data:
+        folder = Path(local_app_data) / "Microsoft" / "Windows" / "Fonts"
+    else:
+        return ""
+
+    faces = []
+    for cut, weight, style in (("Regular", 400, "normal"), ("Semibold", 600, "normal"),
+                               ("Bold", 700, "normal"), ("RegularItalic", 400, "italic")):
+        file = folder / f"SF-Pro-Display-{cut}.otf"
+        if file.is_file():
+            faces.append(f'@font-face {{ font-family: "{SF_PRO}"; src: url("{file.resolve().as_uri()}");'
+                         f' font-weight: {weight}; font-style: {style}; }}')
+    return "\n".join(faces)
+
+
 def build(cfg: dict, out_dir: Path, base_css: str | None = None) -> None:
     """Write theme.css and grain.png (plus grain-patch.png when a patch is set)."""
     out_dir.mkdir(parents=True, exist_ok=True)
     theme_name = "light" if "light" in (cfg.get("themes") or []) and "dark" not in (cfg.get("themes") or []) else "dark"
-    (out_dir / "theme.css").write_text(emit_css(cfg, theme_name, base_css), encoding="utf-8")
+    css = emit_css(cfg, theme_name, base_css)
+    faces = _installed_font_faces(cfg)
+    (out_dir / "theme.css").write_text(f"{faces}\n{css}" if faces else css, encoding="utf-8")
     make_grain(cfg, out_dir / "grain.png")
     make_grain_patch(cfg, out_dir / "grain-patch.png")
     _copy_fonts(cfg, out_dir)

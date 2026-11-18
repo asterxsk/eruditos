@@ -384,3 +384,74 @@ body[data-theme="paperx"] .nt { font: 700 8pt var(--font-heading); color: #17171
 body[data-theme="paperx"] .work { border-left-width: 2pt; }
 body[data-theme="paperx"] .code,
 body[data-theme="paperx"] .card { border-left-width: 2pt; }
+
+/* pdfcn uses the question treatment and reading rhythm of the exam guide. */
+body[data-theme="pdfcn"] { font-size: 11.5pt; line-height: 1.4; }
+body[data-theme="pdfcn"] p { margin: 0 0 7pt; orphans: 2; widows: 2; }
+body[data-theme="pdfcn"] .contents > .guide-title {
+  font-size: 36pt; font-weight: 700; line-height: 1.13; margin: 0 0 19pt;
+}
+body[data-theme="pdfcn"] .contents > :is(h1, .contents-title):not(.guide-title) {
+  font-size: 15pt; font-weight: 700; margin: 0 0 8pt;
+}
+body[data-theme="pdfcn"] .contents-item {
+  padding: 1pt 0; border: 0;
+}
+body[data-theme="pdfcn"] .contents-item.chapter { padding: 8pt 0 3pt; }
+body[data-theme="pdfcn"] a.toc { display: block; position: relative; padding-right: 27pt; }
+body[data-theme="pdfcn"] a.toc .t,
+body[data-theme="pdfcn"] a.toc .n,
+body[data-theme="pdfcn"] a.toc::after {
+  font-family: var(--font-body); font-size: 10pt; line-height: 1.25;
+}
+body[data-theme="pdfcn"] a.toc .n { width: 26pt; color: var(--dim); }
+body[data-theme="pdfcn"] a.toc::after {
+  float: none; position: absolute; top: 0; right: 0; color: var(--dim);
+}
+body[data-theme="pdfcn"] .chapter a.toc .t { font-size: 11pt; font-weight: 700; }
+body[data-theme="pdfcn"] .unit { margin-top: 17pt; }
+body[data-theme="pdfcn"] .contents + .unit { margin-top: 0; }
+body[data-theme="pdfcn"] .unit-head { border: 0; padding: 0; margin-bottom: 10pt; }
+body[data-theme="pdfcn"] .unit-head h1 { font-size: 24pt; font-weight: 700; margin: 0; }
+body[data-theme="pdfcn"] h2.sec {
+  font-size: 13.5pt; font-weight: 600; line-height: 1.15;
+  margin: 13pt 0 7pt; padding: 5pt 9pt;
+  border: 0; border-left: 2pt solid var(--strong);
+  background: #f5f5f5; break-inside: avoid;
+}
+body[data-theme="pdfcn"] h2.sec .topic-num { color: var(--accent); font-weight: 700; }
+body[data-theme="pdfcn"] h3.sub {
+  font-size: 11.5pt; font-weight: 700; color: var(--strong); margin: 7pt 0 3pt;
+}
+body[data-theme="pdfcn"] .keyword { color: var(--strong); }
+body[data-theme="pdfcn"] .theory ul,
+body[data-theme="pdfcn"] ul.pts { padding-left: 18pt; margin: 4pt 0 9pt; }
+body[data-theme="pdfcn"] ul.pts { list-style: disc; }
+body[data-theme="pdfcn"] ul.pts li {
+  font-size: inherit; line-height: inherit; padding: 0; text-indent: 0; margin: 0 0 4pt;
+}
+body[data-theme="pdfcn"] ul.pts li::before { content: none; }
+body[data-theme="pdfcn"] .note,
+body[data-theme="pdfcn"] .tip { border-left: 1pt solid var(--rule); padding: 0 0 0 12pt; margin: 6pt 0 10pt; }
+body[data-theme="pdfcn"] .work {
+  box-decoration-break: clone; border-left: 1pt solid var(--rule);
+  background: var(--block-fill); padding: 8pt 12pt 5pt; margin: 6pt 0 10pt;
+}
+body[data-theme="pdfcn"] .work-b,
+body[data-theme="pdfcn"] .note p,
+body[data-theme="pdfcn"] .tip p { font: inherit; }
+body[data-theme="pdfcn"] .work-b .cont { margin-bottom: 4pt; }
+body[data-theme="pdfcn"] .nt,
+body[data-theme="pdfcn"] .work-h {
+  font: 700 11.5pt/1.25 var(--font-heading); color: var(--strong); margin-bottom: 4pt; padding: 0;
+}
+body[data-theme="pdfcn"] .fig { margin: 6pt 0 10pt; }
+body[data-theme="pdfcn"] .fig .figcap { font-size: 9.5pt; text-align: center; margin-top: 6pt; }
+body[data-theme="pdfcn"] .eq { margin: 9pt 0; }
+body[data-theme="pdfcn"] table.data { font-size: 10pt; line-height: 1.31; margin: 3pt 0 9pt; }
+body[data-theme="pdfcn"] table.data th,
+body[data-theme="pdfcn"] table.data td {
+  padding: 5pt 8pt; border-bottom: .5pt solid var(--rule);
+}
+body[data-theme="pdfcn"] table.data th { font: 700 10pt/1.31 var(--font-body); color: var(--strong); }
+body[data-theme="pdfcn"] .cap { margin: 3pt 0 9pt; }
