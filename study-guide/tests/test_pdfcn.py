@@ -59,3 +59,42 @@ class PdfcnThemeTests(unittest.TestCase):
                 self.assertEqual(number["color"], 0x1764C0)
                 self.assertIn("Follow one access", pdf[1].get_text())
                 self.assertIn("Original diagram.", pdf[1].get_text())
+
+    def test_table_header_appears_once_on_each_page_with_rows(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "guide.json"
+            row_labels = [f"Record {i:03d}" for i in range(1, 101)]
+            source.write_text(json.dumps({
+                "meta": {"title": "Table pagination"},
+                "theme": "pdfcn",
+                "sections": [{
+                    "title": "Records",
+                    "items": [
+                        {"h2": "All records"},
+                        {"table": {
+                            "head": ["Record identifier", "Status"],
+                            "rows": [[label, "Ready"] for label in row_labels],
+                        }},
+                    ],
+                }],
+            }), encoding="utf-8")
+
+            subprocess.run(
+                [sys.executable, str(SKILL / "build.py"), str(source)],
+                capture_output=True, encoding="utf-8", check=True,
+                env=dict(os.environ, PYTHONIOENCODING="utf-8"),
+            )
+
+            actual_rows = []
+            table_pages = 0
+            with pymupdf.open(source.with_suffix(".pdf")) as pdf:
+                for page in pdf:
+                    lines = [line.strip() for line in page.get_text().splitlines()]
+                    rows = [line for line in lines if line in row_labels]
+                    self.assertEqual(lines.count("Record identifier"), int(bool(rows)))
+                    if rows:
+                        table_pages += 1
+                        self.assertLess(lines.index("Record identifier"), lines.index(rows[0]))
+                        actual_rows.extend(rows)
+            self.assertGreater(table_pages, 1)
+            self.assertEqual(actual_rows, row_labels)

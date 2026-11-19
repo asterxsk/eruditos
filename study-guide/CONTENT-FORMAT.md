@@ -87,6 +87,12 @@ The preset uses locally installed SF Pro Display or bundled Guide Sans. Set
 `SF_PRO_DISPLAY_DIR` to the directory containing the local SF Pro Display OTF
 files if the PDF builder needs an explicit path.
 
+### Tables across pages
+
+Use one `table` block per logical table, with one `head` and all its `rows`.
+The renderer paginates long tables and repeats the header only on continuation
+pages. Keep distinct tables in separate blocks even if their column labels match.
+
 ### Inline markup and equations
 
 Prose strings, table cells and captions accept:

@@ -203,6 +203,8 @@ pages, including chapter transitions, equations, tables, code and figures.
   and have readable labels. No clipping, overflow, raw markup or missing assets.
 - Topic headings stay with their content; long blocks flow without large avoidable
   gaps. Naturally short contents and final pages are acceptable.
+- Each logical table has one header per page. Keep all rows in one `table` block
+  and let the renderer repeat the header when the table continues on a new page.
 - Paper/Obsidian retain their style. PaperX retains its academic palette and thicker
   2pt left rules without generic semantic labels printed above each block.
 - No obsolete guide-type, question-bank, exam-frame or preliminary-page machinery
